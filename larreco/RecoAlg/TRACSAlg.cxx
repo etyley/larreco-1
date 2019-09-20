@@ -140,6 +140,17 @@ void shower::TRACSAlg::OrderShowerSpacePoints( std::vector<art::Ptr<recob::Space
   return;
 }
 
+TVector3 shower::TRACSAlg::ShowerCentre(std::vector<art::Ptr<recob::SpacePoint> > const&
+    showersps) const {
+  TVector3 centre_position;
+  for (auto const& sp: showersps){
+    TVector3 pos = SpacePointPosition(sp);
+    centre_position += pos;
+  }
+  if (showersps.size() > 0) centre_position *= (1./showersps.size());
+  return centre_position;
+}
+
 
 TVector3 shower::TRACSAlg::ShowerCentre(std::vector<art::Ptr<recob::SpacePoint> > const&
     showerspcs, art::FindManyP<recob::Hit> const& fmh) const {

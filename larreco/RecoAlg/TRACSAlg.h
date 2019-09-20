@@ -56,6 +56,7 @@ class shower::TRACSAlg {
     void OrderShowerSpacePoints( std::vector<art::Ptr<recob::SpacePoint> >&
 				 showersps, TVector3 const& vertex) const;
 
+    TVector3 ShowerCentre(std::vector<art::Ptr<recob::SpacePoint> > const& showersps) const;
 
     TVector3 ShowerCentre(std::vector<art::Ptr<recob::SpacePoint> > const& showersps,
         art::FindManyP<recob::Hit> const& fmh, float& totalCharge) const;
