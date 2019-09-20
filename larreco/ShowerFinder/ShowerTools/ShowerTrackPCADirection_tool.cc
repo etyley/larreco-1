@@ -197,6 +197,8 @@ namespace ShowerRecoTools {
 
     TVector3 Eigenvector = { (*Eigenvectors)[0][0], (*Eigenvectors)[1][0], (*Eigenvectors)[2][0] };
 
+    delete pca;
+
     return Eigenvector;
   }
 }

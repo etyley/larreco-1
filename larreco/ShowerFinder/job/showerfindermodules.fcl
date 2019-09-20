@@ -155,7 +155,7 @@ standard_tracs_shower: {
     module_type: "TRACS"
 
     ShowerFinderTools: [
-         @local::showerstartposition,
+         @local::showerpfpvertexstartposition,
          @local::showerpcadirection,
          @local::showerlinearenergy,
          @local::shower3Dtrackhitfinder, 

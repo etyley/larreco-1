@@ -90,11 +90,17 @@ tool_type: Shower3DTrackHitFinder
 #MaxProjectionDist
                        }
 
-showerstartposition:{
-tool_type: ShowerStartPosition
+showerpfpvertexstartposition:{
+tool_type: ShowerPFPVertexStartPosition
              BaseTools: @local::showerbasetools
              PFParticleModuleLabel: "pandora"
-                    }
+                             }
+
+showerpcapropergationstartposition:{
+tool_type: ShowerPCAPropergationStartPosition
+             BaseTools: @local::showerbasetools
+             PFParticleModuleLabel: "pandora"
+                                   }
 
 showerstandardcalodedx:{
 tool_type: ShowerStandardCalodEdx
@@ -249,13 +255,14 @@ tool_type: ShowerSlidingStandardCalodEdx
                               }
 
 showerresidualtrackhitfinder:{
-
 tool_type: ShowerResidualTrackHitFinder
              BaseTools: @local::showerbasetools
              PFParticleModuleLabel: "pandora"
              UseShowerDirection:    true
              ForwardHitsOnly:       true
              MaxResidualDiff:       0.8
+             StartFitSize:          3
+             NMissPoints:           1
              ChargeWeighted:        false
                              }
 

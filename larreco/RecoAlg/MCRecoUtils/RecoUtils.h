@@ -52,6 +52,8 @@ namespace RecoUtils{
 
   int NumberofHitsFromTrack(int TrackID, const std::vector<art::Ptr<recob::Hit> >& hits); //Returns the number of hits in the vector that are associated to the MC track.
 
+  int NumberofPrimaryHitsFromTrack(int TrackID, const std::vector<art::Ptr<recob::Hit> >& hits); //Returns the number of hits in the vector that are associated to the MC track.
+
   std::map<geo::PlaneID,int> NumberofPlaneHitsFromTrack(int TrackID, const std::vector<art::Ptr<recob::Hit> >& hits); //Returns the number of hits in the vector that are ssociated to the MC trakc split into planes.
 
   std::map<int,std::map<geo::PlaneID,int> > NumberofPlaneHitsPerTrack(const std::vector<art::Ptr<recob::Hit> >& hits); //Returns a map of all the number of hits and the respetive track id they are associated to.

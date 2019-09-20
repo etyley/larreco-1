@@ -403,14 +403,24 @@ namespace ShowerRecoTools{
     }
 
     //Work out which is the best plane from the most hits.
+    // int max_hits   = -999;
+    // int best_plane = -999;
+    // for(auto const& num_hits_plane: num_hits){
+    //   if(num_hits_plane.second > max_hits){
+    //     best_plane = num_hits_plane.first;
+    //     max_hits = num_hits_plane.second;
+    //   }
+    // }
+
     int max_hits   = -999;
     int best_plane = -999;
-    for(auto const& num_hits_plane: num_hits){
-      if(num_hits_plane.second > max_hits){
-        best_plane = num_hits_plane.first;
-        max_hits = num_hits_plane.second;
+    for(auto const& dEdx_plane: dEdx_vec_cut){
+      if((int) dEdx_plane.second.size() > max_hits){
+        best_plane = dEdx_plane.first;
+        max_hits   = dEdx_plane.second.size();
       }
     }
+
 
     //Need to sort out errors sensibly.
     ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,"ShowerdEdx");
