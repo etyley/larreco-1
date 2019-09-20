@@ -40,42 +40,43 @@ namespace ShowerRecoTools{
 
   class ShowerSlidingStandardCalodEdx:IShowerTool {
 
-  public:
+    public:
 
-    ShowerSlidingStandardCalodEdx(const fhicl::ParameterSet& pset);
+      ShowerSlidingStandardCalodEdx(const fhicl::ParameterSet& pset);
 
-    ~ShowerSlidingStandardCalodEdx();
+      ~ShowerSlidingStandardCalodEdx();
 
-    //Physics Function. Calculate the dEdx.
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event, 
-			 reco::shower::ShowerElementHolder& ShowerEleHolder) override;
+      //Physics Function. Calculate the dEdx.
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
-  private:
+    private:
 
-    //Servcies and Algorithms
-    art::ServiceHandle<geo::Geometry> fGeom;
-    calo::CalorimetryAlg fCalorimetryAlg;
+      //Servcies and Algorithms
+      art::ServiceHandle<geo::Geometry> fGeom;
+      calo::CalorimetryAlg fCalorimetryAlg;
 
-    detinfo::DetectorProperties const* fDetProp;
+      detinfo::DetectorProperties const* fDetProp;
 
-    //fcl parameters
-    float fMinAngleToWire;  //Minimum angle between the wire direction and the shower
-                            //direction for the spacepoint to be used. Default means 
-                            //the cut has no effect. In radians.
-    float fShapingTime;     //Shaping time of the ASIC defualt so we don't cut on track 
-                            //going too much into the plane. In Microseconds
-    float fMinDistCutOff;   //Distance in wires a hit has to be from the start position
-                            //to be used 
-    float fMaxDist;         //Distance in wires a that a trajectory point can be from a
-                            //spacepoint to match to it.
-    float fdEdxTrackLength; //Max Distance a spacepoint can be away from the start of the
-                            //track. In cm
-    float fGradCut; 
-    bool fUseMedian;        //Use the median value as the dEdx rather than the mean.
-    bool fCutStartPosition; //Remove hits using MinDistCutOff from the vertex as well. 
-    art::InputTag fPFParticleModuleLabel;
- 
+      //fcl parameters
+      float fMinAngleToWire;  //Minimum angle between the wire direction and the shower
+      //direction for the spacepoint to be used. Default means
+      //the cut has no effect. In radians.
+      float fShapingTime;     //Shaping time of the ASIC defualt so we don't cut on track
+      //going too much into the plane. In Microseconds
+      float fMinDistCutOff;   //Distance in wires a hit has to be from the start position
+      //to be used
+      float fMaxDist;         //Distance in wires a that a trajectory point can be from a
+      //spacepoint to match to it.
+      float fdEdxTrackLength; //Max Distance a spacepoint can be away from the start of the
+      //track. In cm
+      float fGradCut;
+      bool fUseMedian;        //Use the median value as the dEdx rather than the mean.
+      bool fCutStartPosition; //Remove hits using MinDistCutOff from the vertex as well.
+      bool fDenominator;        //Use demoninator when calculating gradient
+      art::InputTag fPFParticleModuleLabel;
+
   };
 
 
@@ -91,6 +92,7 @@ namespace ShowerRecoTools{
     fGradCut(pset.get<float>("GradCut")),
     fUseMedian(pset.get<bool>("UseMedian")),
     fCutStartPosition(pset.get<bool>("CutStartPosition")),
+    fDenominator(pset.get<bool>("Denominator")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel"))
   {
   }
@@ -100,8 +102,8 @@ namespace ShowerRecoTools{
   }
 
   int ShowerSlidingStandardCalodEdx::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-						      art::Event& Event, 
-						      reco::shower::ShowerElementHolder& ShowerEleHolder){
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
 
 
     // Shower dEdx calculation
@@ -204,7 +206,7 @@ namespace ShowerRecoTools{
         //ignore bogus info.
         auto flags = InitialTrack.FlagsAtPoint(traj);
         if(flags.isSet(recob::TrajectoryPointFlagTraits::NoPoint))
-	  {std::cout << "bogus point "<< std::endl; continue;}
+        {std::cout << "bogus point "<< std::endl; continue;}
 
         TVector3 pos = IShowerTool::GetTRACSAlg().SpacePointPosition(sp) - TrajPosition;
 
@@ -239,10 +241,10 @@ namespace ShowerRecoTools{
       //If the direction is in the same direction as the wires within some tolerance the hit finding struggles. Let remove these.
       TVector3 PlaneDirection = fGeom->Plane(planeid).GetIncreasingWireDirection();
 
-      if(TrajDirection.Angle(PlaneDirection) < fMinAngleToWire){ 
-	mf::LogWarning("ShowerSlidingStandardCalodEdx") 
-	  << "remove from angle cut" << std::endl;
-	continue;
+      if(TrajDirection.Angle(PlaneDirection) < fMinAngleToWire){
+        mf::LogWarning("ShowerSlidingStandardCalodEdx")
+          << "remove from angle cut" << std::endl;
+        continue;
       }
 
       //If the direction is too much into the wire plane then the shaping amplifer cuts the charge. Lets remove these events.
@@ -252,9 +254,9 @@ namespace ShowerRecoTools{
 
       //Shaping time doesn't seem to exist in a global place so add it as a fcl.
       if(fShapingTime < time_taken){
-	mf::LogWarning("ShowerSlidingStandardCalodEdx")
-	  << "move for shaping time" << std::endl; 
-	continue;
+        mf::LogWarning("ShowerSlidingStandardCalodEdx")
+          << "move for shaping time" << std::endl;
+        continue;
       }
 
       //If we still exist then we can be used in the calculation. Calculate the 3D pitch
@@ -266,7 +268,7 @@ namespace ShowerRecoTools{
       //Calculate the dEdx
       double dEdx = fCalorimetryAlg.dEdx_AREA(dQdx, hit->PeakTime(), planeid.Plane);
 
-      std::cout << " true dEdx: " << dEdx << " dQdx: " << dQdx << " trackpitch: " << trackpitch << " plane: " << planeid.Plane  << " distance away: " << (TrajPosition-TrajPositionStart).Mag() << std::endl;  
+      // std::cout << " true dEdx: " << dEdx << " dQdx: " << dQdx << " trackpitch: " << trackpitch << " plane: " << planeid.Plane  << " distance away: " << (TrajPosition-TrajPositionStart).Mag() << std::endl;
 
       //Add the value to the dEdx
       dEdx_vec[planeid.Plane].push_back(dEdx);
@@ -278,13 +280,13 @@ namespace ShowerRecoTools{
       ++num_hits[planeid.Plane];
     }
 
-    //Search for blow ups and gradient changes. 
-    //Electrons have a very flat dEdx as function of energy till ~10MeV. 
+    //Search for blow ups and gradient changes.
+    //Electrons have a very flat dEdx as function of energy till ~10MeV.
     //If there is a sudden jump particle has probably split
     //If there is very large dEdx we have either calculated it wrong (probably) or the Electron is coming to end.
     //Assumes hits are ordered!
     std::map<int,std::vector<double > > dEdx_vec_cut;
-    
+
     for(geo::PlaneID plane_id: fGeom->IteratePlaneIDs()){
       dEdx_vec_cut[plane_id.Plane] = {};
     }
@@ -292,7 +294,7 @@ namespace ShowerRecoTools{
     for(auto const& dEdx_plane: dEdx_vec){
       std::cout << "Plane : " << dEdx_plane.first << std::endl;
       for(auto const& dEdx: dEdx_plane.second){
-	std::cout << "dEdx: " << dEdx << std::endl;
+        std::cout << "dEdx: " << dEdx << std::endl;
       }
     }
 
@@ -302,61 +304,69 @@ namespace ShowerRecoTools{
 
       std::cout << "Plane : " << dEdx_plane.first << std::endl;
       for(auto const& dEdx: dEdx_plane.second){
-	
-	//Protect from silly starting values
-	if(dEdx_iter == 0 && dEdx > 8){continue;}
-	if(dEdx_iter == 0 && dEdx < 0.5){continue;}
 
-	if(dEdx_iter == 0 ){
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  ++dEdx_iter;
-	  prev_dEdx = dEdx;
-	  continue;
-	}
+        //Protect from silly starting values
+        if(dEdx_iter == 0 && dEdx > 8){continue;}
+        if(dEdx_iter == 0 && dEdx < 0.5){continue;}
 
-     
+        if(dEdx_iter == 0 ){
+          dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+          ++dEdx_iter;
+          prev_dEdx = dEdx;
+          continue;
+        }
 
-	//Calulate the gradient.
-	double dy   = dEdx - prev_dEdx;
-	double dx   = dE_vec[dEdx_plane.first][dEdx_iter] + dE_vec[dEdx_plane.first][dEdx_iter-1];
-	double grad = dy/dx;
 
-	std::cout << "dEdx: " << dEdx << " prev_dEdx: " << prev_dEdx << "dy: " << dy << " dx: " << dx << " grad: " << grad << std::endl;
 
-	if(TMath::Abs(grad) < fGradCut){	  
+        //Calulate the gradient.
+        double dx;
+        if (fDenominator) {
+          dx = dE_vec[dEdx_plane.first][dEdx_iter] + dE_vec[dEdx_plane.first][dEdx_iter-1];
+        } else {
+          dx = 1;
+        };
 
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  prev_dEdx = dEdx;
-	  ++dEdx_iter;
-	  continue;
-	}
+        double dy   = dEdx - prev_dEdx;
+        double grad = dy/dx;
 
-	//Maybe we got the start position wrong? and gradient is fluffed because of it
-	if(dEdx_iter == 1){
-	  
-	  //Protect against silly values
-	  if(dEdx > 20){continue;}
-	  if(dEdx < 0.3){continue;}
+        std::cout << "dEdx: " << dEdx << " prev_dEdx: " << prev_dEdx << " dy: " << dy << " dx: " << dx << " grad: " << grad << std::endl;
 
-	  dEdx_vec_cut[dEdx_plane.first].pop_back();
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  ++dEdx_iter;
-	  continue;
-	}
+        if(TMath::Abs(grad) < fGradCut){
 
-	break;
+          dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+          prev_dEdx = dEdx;
+          ++dEdx_iter;
+          continue;
+        } else {
+          std::cout<<"Breaking"<<std::endl;
+        }
 
-	// //Calculate the gradient of the next point in case this is one off
-	// if(length_vec[dEdx_plane.first].size() > (unsigned) dEdx_iter+2){
-	//   double next_dy = dEdx_vec[dEdx_plane.first][dEdx_iter+1] - prev_dEdx;
-	//   double next_dx = (length_vec[dEdx_plane.first][dEdx_iter+2] - length_vec[dEdx_plane.first][dEdx_iter-1]).Mag();
-	//   double next_grad = next_dy/next_dx;
-	//   std::cout << "next dy: " << next_dy << " next dx: " << next_dx << " next_grad: " << next_grad << std::endl;
-	//   if(TMath::Abs(next_grad) > 0.5*fGradCut){break;}
-	// }
-      
- 	// prev_dEdx = dEdx;
-	// ++dEdx_iter;
+        //Maybe we got the start position wrong? and gradient is fluffed because of it
+        if(dEdx_iter == 1){
+
+          //Protect against silly values
+          if(dEdx > 20){continue;}
+          if(dEdx < 0.3){continue;}
+
+          dEdx_vec_cut[dEdx_plane.first].pop_back();
+          dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+          ++dEdx_iter;
+          continue;
+        }
+
+        break;
+
+        // //Calculate the gradient of the next point in case this is one off
+        // if(length_vec[dEdx_plane.first].size() > (unsigned) dEdx_iter+2){
+        //   double next_dy = dEdx_vec[dEdx_plane.first][dEdx_iter+1] - prev_dEdx;
+        //   double next_dx = (length_vec[dEdx_plane.first][dEdx_iter+2] - length_vec[dEdx_plane.first][dEdx_iter-1]).Mag();
+        //   double next_grad = next_dy/next_dx;
+        //   std::cout << "next dy: " << next_dy << " next dx: " << next_dx << " next_grad: " << next_grad << std::endl;
+        //   if(TMath::Abs(next_grad) > 0.5*fGradCut){break;}
+        // }
+
+        // prev_dEdx = dEdx;
+        // ++dEdx_iter;
       }
     }
 
@@ -372,12 +382,15 @@ namespace ShowerRecoTools{
         continue;
       }
 
-      std::cout << "Plane: " << dEdx_plane.first << std::endl;
-      for(auto const& dEdx: dEdx_plane.second){
-      std::cout<< "dEdx: " << dEdx << std::endl;
-      }
+      std::cout << "Plane: " << dEdx_plane.first;
+      // for(auto const& dEdx: dEdx_plane.second){
+      //   std::cout<< "dEdx: " << dEdx << std::endl;
+      // }
 
-      if(fUseMedian){dEdx_val.push_back(TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0]));}
+      if(fUseMedian){
+        dEdx_val.push_back(TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0]));
+        std::cout<<"Median dEdx: "<<TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0])<<std::endl;
+      }
       else{
         //Else calculate the mean value.
         double dEdx_mean = 0;
@@ -398,7 +411,7 @@ namespace ShowerRecoTools{
         max_hits = num_hits_plane.second;
       }
     }
-    
+
     //Need to sort out errors sensibly.
     ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,"ShowerdEdx");
     ShowerEleHolder.SetElement(best_plane,"ShowerBestPlane");
