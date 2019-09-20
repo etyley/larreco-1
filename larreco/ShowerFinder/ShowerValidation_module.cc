@@ -161,6 +161,9 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     std::map<std::string,std::vector<float> > sTrueEnergy_TreeVal;
     std::map<std::string,std::vector<float> > sBestPlane_TreeVal;
     std::map<std::string,std::vector<float> > sGeoProjectionMatched_TreeVal;
+    std::map<std::string,std::vector<float> > sTrackHitComp_TreeVal;
+    std::map<std::string,std::vector<float> > sTrackHitPurity_TreeVal;
+    std::map<std::string,std::vector<float> > sTrackHitCompPurity_TreeVal;
 
     std::map<std::string,std::vector<float> > pfpNeutrinos_TreeVal;
     std::map<std::string,std::vector<float> > pfpTracks_TreeVal;
@@ -316,6 +319,9 @@ void ana::ShowerValidation::beginJob() {
   initTree(Tree,"sTrueEnergy",sTrueEnergy_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sBestPlane",sBestPlane_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sGeoProjectionMatched",sGeoProjectionMatched_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sTrackHitComp",sTrackHitComp_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sTrackHitPurity",sTrackHitPurity_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sTrackHitCompPurity",sTrackHitCompPurity_TreeVal,fShowerModuleLabels);
 
   if (fPFPValidation){
     initTree(Tree,"pfpNeutrinos",pfpNeutrinos_TreeVal,fShowerModuleLabels);
@@ -785,6 +791,11 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     if(evt.getByLabel(fPFParticleLabel,pfpListHandle))
     {art::fill_ptr_vector(pfps,pfpListHandle);}
 
+    art::Handle<std::vector<recob::Track> > showertrackHandle;
+    std::vector<art::Ptr<recob::Track> > showertrack;
+    if(evt.getByLabel(fShowerModuleLabel,showertrackHandle))
+      {art::fill_ptr_vector(showertrack,showertrackHandle);}
+
     //Getting the Shower Information
     //Association between Showers and 2d Hits
     art::FindManyP<recob::Hit> fmh(showerListHandle, evt, fShowerModuleLabel);
@@ -800,6 +811,10 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
     //Association between Showers and pfParticle
     art::FindManyP<recob::PFParticle> fmpf(showerListHandle, evt, fShowerModuleLabel);
+
+    //Association between shower and initial track hits 
+    art::FindManyP<recob::Track> fmit(showerListHandle, evt, fShowerModuleLabel);
+    art::FindManyP<recob::Hit> fmith(showertrackHandle, evt, fShowerModuleLabel);
 
     std::vector< art::Ptr<recob::Hit> > showerhits; //hits in the shower
     std::vector< art::Ptr<recob::Vertex> > neutrinoVertices;
@@ -1065,6 +1080,59 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         }
       }
 
+      //See if the initial track hit are created. 
+      if(showertrackHandle.isValid() && trueParticles[ShowerTrackID]->PdgCode() == 11){
+	
+	
+	//Get the track 
+	std::vector< art::Ptr<recob::Track> > initial_track = fmit.at(shower.key());
+	if(initial_track.size() != 1){
+	  mf::LogError("ShowerValidation") << "Too Many Track Bailing" << std::endl;
+	  return;
+	}
+
+	//Get the hits.
+	std::vector<art::Ptr<recob::Hit> > initialtrackhits  = fmith.at(initial_track[0].key());
+	
+	//Where do the hits come from 
+	int initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
+	int true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
+
+	//Calculate metrics 
+	if(true_num_hits_initialTrack != 0){
+	  double initial_track_completeness = (double) initialtrack_hits_from_mother/(double) true_num_hits_initialTrack;  
+	  sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
+	}
+	else{ 
+	  double initial_track_completeness = -999; 
+	  sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
+	}
+
+	if(initialtrackhits.size() != 0){
+	  double initial_track_purity       = (double) initialtrack_hits_from_mother/(double) initialtrackhits.size();
+	  sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
+
+	}
+	else{ 
+	  double initial_track_purity = -999;
+	  sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
+	}
+
+	if(initialtrackhits.size() != 0 && true_num_hits_initialTrack != 0){
+	  double initial_track_purity       = (double) initialtrack_hits_from_mother/(double) initialtrackhits.size();
+	  double initial_track_completeness = (double) initialtrack_hits_from_mother/(double) true_num_hits_initialTrack;
+	  sTrackHitCompPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity*initial_track_completeness);
+	}
+	else{
+	  sTrackHitCompPurity_TreeVal[fShowerModuleLabel].push_back(-999);
+	}
+      }
+      else{ 
+	double initial_track_completeness = 0; 
+	sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
+	double initial_track_purity = 0;
+	sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
+      }
 
       double TrueEnergyDep_FromShower = 0;
       //Calculate the true Energy deposited By Shower
@@ -1184,6 +1252,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
           EvaluatesdEdx = true;
         }
       }
+
 
       //Get the angles between the direction
       float ShowerDirection_Xdiff = -99999;
@@ -1499,6 +1568,9 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     sTrueEnergy_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sBestPlane_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sGeoProjectionMatched_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sTrackHitComp_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sTrackHitPurity_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sTrackHitCompPurity_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
 
     pfpNeutrinos_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     pfpTracks_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();

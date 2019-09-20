@@ -125,6 +125,10 @@ namespace ShowerRecoTools {
     TVector3 ShowerCentre;
     TVector3 Eigenvector = ShowerPCAVector(spacePoints_pfp,fmh,ShowerCentre);
 
+    //Save the shower the center for downstream tools
+    TVector3 ShowerCentreErr = {-999,-999,-999};
+    ShowerEleHolder.SetElement(ShowerCentre,ShowerCentreErr,"ShowerCentre");
+
     //Check if we are pointing the correct direction or not, First try the start position
     if(fUseStartPosition){
       if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
@@ -150,7 +154,6 @@ namespace ShowerRecoTools {
 
       //To do
       TVector3 EigenvectorErr = {-999,-999,-999};
-
       ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,"ShowerDirection");
 
       return 0;

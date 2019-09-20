@@ -90,8 +90,14 @@ shower3Dtrackhitfinder:{
                                   #MaxProjectionDist
 }
 
-showerstartposition:{
-    tool_type: ShowerStartPosition
+showerpfpvertexstartposition:{
+    tool_type: ShowerPFPVertexStartPosition
+    BaseTools: @local::showerbasetools
+    PFParticleModuleLabel: "pandora"
+}
+
+showerpcapropergationstartposition:{
+    tool_type: ShowerPCAPropergationStartPosition
     BaseTools: @local::showerbasetools
     PFParticleModuleLabel: "pandora"
 }
