@@ -296,69 +296,78 @@ namespace ShowerRecoTools{
       }
     }
 
-    for(auto const& dEdx_plane: dEdx_vec){
-      int    dEdx_iter = 0;
-      double prev_dEdx = 999;
+    // for(auto const& dEdx_plane: dEdx_vec){
+    //   int    dEdx_iter = 0;
+    //   double prev_dEdx = 999;
 
-      std::cout << "Plane : " << dEdx_plane.first << std::endl;
-      for(auto const& dEdx: dEdx_plane.second){
+    //   std::cout << "Plane : " << dEdx_plane.first << std::endl;
+    //   for(auto const& dEdx: dEdx_plane.second){
 	
-	//Protect from silly starting values
-	if(dEdx_iter == 0 && dEdx > 8){continue;}
-	if(dEdx_iter == 0 && dEdx < 0.5){continue;}
+    // 	//Protect from silly starting values
+    // 	if(dEdx_iter == 0 && dEdx > 8){continue;}
+    // 	if(dEdx_iter == 0 && dEdx < 0.5){continue;}
 
-	if(dEdx_iter == 0 ){
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  ++dEdx_iter;
-	  prev_dEdx = dEdx;
-	  continue;
-	}
+    // 	if(dEdx_iter == 0 ){
+    // 	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+    // 	  ++dEdx_iter;
+    // 	  prev_dEdx = dEdx;
+    // 	  continue;
+    // 	}
 
-     
+    // 	//Calulate the gradient.
+    // 	double dy   = dEdx - prev_dEdx;
+    // 	double dx   = dE_vec[dEdx_plane.first][dEdx_iter] + dE_vec[dEdx_plane.first][dEdx_iter-1];
+    // 	double grad = dy/dx;
 
-	//Calulate the gradient.
-	double dy   = dEdx - prev_dEdx;
-	double dx   = dE_vec[dEdx_plane.first][dEdx_iter] + dE_vec[dEdx_plane.first][dEdx_iter-1];
-	double grad = dy/dx;
+    // 	std::cout << "dEdx: " << dEdx << " prev_dEdx: " << prev_dEdx << "dy: " << dy << " dx: " << dx << " grad: " << grad << std::endl;
 
-	std::cout << "dEdx: " << dEdx << " prev_dEdx: " << prev_dEdx << "dy: " << dy << " dx: " << dx << " grad: " << grad << std::endl;
+    // 	if(TMath::Abs(grad) < fGradCut){	  
 
-	if(TMath::Abs(grad) < fGradCut){	  
+    // 	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+    // 	  prev_dEdx = dEdx;
+    // 	  ++dEdx_iter;
+    // 	  continue;
+    // 	}
 
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  prev_dEdx = dEdx;
-	  ++dEdx_iter;
-	  continue;
-	}
-
-	//Maybe we got the start position wrong? and gradient is fluffed because of it
-	if(dEdx_iter == 1){
+    // 	//Maybe we got the start position wrong? and gradient is fluffed because of it
+    // 	if(dEdx_iter == 1){
 	  
-	  //Protect against silly values
-	  if(dEdx > 20){continue;}
-	  if(dEdx < 0.3){continue;}
+    // 	  //Protect against silly values
+    // 	  if(dEdx > 20){continue;}
+    // 	  if(dEdx < 0.3){continue;}
 
-	  dEdx_vec_cut[dEdx_plane.first].pop_back();
-	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
-	  ++dEdx_iter;
-	  continue;
-	}
+    // 	  dEdx_vec_cut[dEdx_plane.first].pop_back();
+    // 	  dEdx_vec_cut[dEdx_plane.first].push_back(dEdx);
+    // 	  ++dEdx_iter;
+    // 	  continue;
+    // 	}
 
-	break;
+    // 	break;
 
-	// //Calculate the gradient of the next point in case this is one off
-	// if(length_vec[dEdx_plane.first].size() > (unsigned) dEdx_iter+2){
-	//   double next_dy = dEdx_vec[dEdx_plane.first][dEdx_iter+1] - prev_dEdx;
-	//   double next_dx = (length_vec[dEdx_plane.first][dEdx_iter+2] - length_vec[dEdx_plane.first][dEdx_iter-1]).Mag();
-	//   double next_grad = next_dy/next_dx;
-	//   std::cout << "next dy: " << next_dy << " next dx: " << next_dx << " next_grad: " << next_grad << std::endl;
-	//   if(TMath::Abs(next_grad) > 0.5*fGradCut){break;}
-	// }
+    // 	// //Calculate the gradient of the next point in case this is one off
+    // 	// if(length_vec[dEdx_plane.first].size() > (unsigned) dEdx_iter+2){
+    // 	//   double next_dy = dEdx_vec[dEdx_plane.first][dEdx_iter+1] - prev_dEdx;
+    // 	//   double next_dx = (length_vec[dEdx_plane.first][dEdx_iter+2] - length_vec[dEdx_plane.first][dEdx_iter-1]).Mag();
+    // 	//   double next_grad = next_dy/next_dx;
+    // 	//   std::cout << "next dy: " << next_dy << " next dx: " << next_dx << " next_grad: " << next_grad << std::endl;
+    // 	//   if(TMath::Abs(next_grad) > 0.5*fGradCut){break;}
+    // 	// }
       
- 	// prev_dEdx = dEdx;
-	// ++dEdx_iter;
-      }
-    }
+    // 	// prev_dEdx = dEdx;
+    // 	// ++dEdx_iter;
+    //   }
+    // }
+
+    //Try to account for starting to close to vertex and not stopping the track when we pair produce.
+    std::vector<double> dEdx_val;
+    std::vector<double> dEdx_valErr;
+    for(auto const& dEdx_plane: dEdx_vec){ 
+      for(auto const& dEdx: dEdx_plane.second){  
+
+	//The Function of dEdx as a function of E is flat above ~10 MeV.
+	//We are looking for a jump up (or down) above the ladau width in the dEx 
+	//to account accoutn for pair production. 
+	//Dom Estimates that the somwhere above 0.28 MeV will be a good cut 
 
 
     //Never have the stats to do a landau fit and get the most probable value. User decides if they want the median value or the mean.
