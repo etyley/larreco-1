@@ -251,6 +251,14 @@ TVector3 shower::TRACSAlg::SpacePointPosition(art::Ptr<recob::SpacePoint> const&
   return sp_postiion;
 }
 
+double shower::TRACSAlg::DistanceBetweenSpacePoints(art::Ptr<recob::SpacePoint> const& sp_a, art::Ptr<recob::SpacePoint> const& sp_b) const{
+  TVector3 position_a = SpacePointPosition(sp_a);
+  TVector3 position_b = SpacePointPosition(sp_b);
+  double distance = (position_a-position_b).Mag();
+  return distance;
+}
+
+
 
 //Return the charge of the spacepoint in ADC.
 double shower::TRACSAlg::SpacePointCharge(art::Ptr<recob::SpacePoint> const& sp,

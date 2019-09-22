@@ -67,6 +67,8 @@ class shower::TRACSAlg {
 
     TVector3 SpacePointPosition(art::Ptr<recob::SpacePoint> const& sp) const;
 
+    double DistanceBetweenSpacePoints(art::Ptr<recob::SpacePoint> const& sp_a, art::Ptr<recob::SpacePoint> const& sp_b) const;
+
     double SpacePointCharge(art::Ptr<recob::SpacePoint> const& sp, art::FindManyP<recob::Hit> const& fmh) const;
 
     double SpacePointTime(art::Ptr<recob::SpacePoint> const& sp, art::FindManyP<recob::Hit> const& fmh) const;
