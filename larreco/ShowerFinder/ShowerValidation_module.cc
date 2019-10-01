@@ -73,7 +73,7 @@
 //C++ Includes
 #include <vector>
 #include <iostream>
-
+#include <fstream>
 
 namespace ana {
   class ShowerValidation;
@@ -164,6 +164,11 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     std::map<std::string,std::vector<float> > sTrackHitComp_TreeVal;
     std::map<std::string,std::vector<float> > sTrackHitPurity_TreeVal;
     std::map<std::string,std::vector<float> > sTrackHitCompPurity_TreeVal;
+    std::map<std::string,std::vector<float> > sTrueTrackLengh_TreeVal;
+    std::map<std::string,std::vector<float> > sTrueTrackSpread_TreeVal;
+    std::map<std::string,std::vector<float> > sPDG_TreeVal;
+    std::map<std::string,std::vector<float> > sMother_TreeVal;
+    std::map<std::string,std::vector<float> > sPFPID_TreeVal;
 
     std::map<std::string,std::vector<float> > pfpNeutrinos_TreeVal;
     std::map<std::string,std::vector<float> > pfpTracks_TreeVal;
@@ -322,6 +327,11 @@ void ana::ShowerValidation::beginJob() {
   initTree(Tree,"sTrackHitComp",sTrackHitComp_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sTrackHitPurity",sTrackHitPurity_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sTrackHitCompPurity",sTrackHitCompPurity_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sTrueTrackLengh",sTrueTrackLengh_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sTrueTrackSpread",sTrueTrackSpread_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sPDG",sPDG_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sMother",sMother_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sPFPID",sPFPID_TreeVal,fShowerModuleLabels);
 
   if (fPFPValidation){
     initTree(Tree,"pfpNeutrinos",pfpNeutrinos_TreeVal,fShowerModuleLabels);
@@ -1026,7 +1036,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       if(fmpf.isValid() && fUseNeutrinoShowers){
 	if(fmpf.at(shower.key()).size() > 0){
 	  if(pfpsMap.find(fmpf.at(shower.key()).at(0)->Parent()) != pfpsMap.end()){
-	      if(pfpsMap[fmpf.at(shower.key()).at(0)->Parent()]->PdgCode() == 13){continue;}
+	    if(pfpsMap[fmpf.at(shower.key()).at(0)->Parent()]->PdgCode() != 12 && pfpsMap[fmpf.at(shower.key()).at(0)->Parent()]->PdgCode() != 14){continue;}
 	  }
 	}
       }
@@ -1045,8 +1055,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       int ShowerBest_Plane = shower->best_plane();
       if(std::isnan(ShowerBest_Plane)){ShowerBest_Plane = 0;}
 
-      sBestPlane_TreeVal[fShowerModuleLabel].push_back(ShowerBest_Plane);
-
 
       //Function from RecoUtils, finds the most probable track ID associated with the set of hits from there true energy depositons. The pair returns the energy as well.
       std::pair<int,double> ShowerTrackInfo = ShowerUtils::TrueParticleIDFromTrueChain(ShowersMothers,showerhits,ShowerBest_Plane);
@@ -1058,6 +1066,15 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       if(TrueEnergyDepWithinShower_FromTrueShower == -99999){
         continue;
         std::cout << "Reco Shower not matched to true shower. Think of reducing the energy threshold" << std::endl;
+      }
+
+      sBestPlane_TreeVal[fShowerModuleLabel].push_back(ShowerBest_Plane);
+      
+      //Add the pfp id.
+      if(fmpf.isValid()){
+	if(fmpf.at(shower.key()).size() > 0){
+	  sPFPID_TreeVal[fShowerModuleLabel].push_back(fmpf.at(shower.key()).at(0)->Self());
+	}
       }
 
       //Get the number of hits associated to the true particle.
@@ -1110,6 +1127,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
 	if(initialtrackhits.size() != 0){
 	  double initial_track_purity       = (double) initialtrack_hits_from_mother/(double) initialtrackhits.size();
+	  std::cout << "purity: " << initial_track_purity << " initialtrack_hits_from_mother: " << initialtrack_hits_from_mother << " initialtrackhits.size: " << initialtrackhits.size() << std::endl;
 	  sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
 
 	}
@@ -1133,6 +1151,9 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	double initial_track_purity = 0;
 	sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
       }
+
+      //Get the true track length 
+
 
       double TrueEnergyDep_FromShower = 0;
       //Calculate the true Energy deposited By Shower
@@ -1189,6 +1210,10 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       //Find the MCParticle this shower associates to
       const simb::MCParticle* MCShowerParticle = trueParticles.at(ShowerTrackID);
 
+      sPDG_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->PdgCode());
+      sMother_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->Mother());
+
+
       //Find the Energy of the particle:
       float Energy = MCShowerParticle->E();
       sTrueEnergy_TreeVal[fShowerModuleLabel].push_back(Energy*1000);
@@ -1213,6 +1238,34 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       TLorentzVector PositionTrajStart =  MCShowerParticle->Position(0);
       TLorentzVector PositionTrajEnd   =  MCShowerParticle->Position(PhotonEndTrajPoint);
 
+      //Get the track length of the initial track stub. 
+      double TrackStubLength = (PositionTrajStart-PositionTrajEnd).Vect().Mag();
+
+      //How straight are the IDE points. First Define the line.
+      TVector3 track_line = (PositionTrajStart.Vect()-PositionTrajEnd.Vect()).Unit();
+
+      double TrackStubResidual = 0;
+      double TrackStubResidual_iter = 0;
+      //Get the energy depositions
+      std::vector< const sim::IDE * > IDEs = backtracker->TrackIdToSimIDEs_Ps(ShowerTrackID);
+      for(auto const& ide: IDEs){
+	//Calculate the perpendicualr distance from the straight line 
+	if(ide->trackID == ShowerTrackID){
+	  TVector3 pos = {ide->x, ide->y,ide->z};
+	  TVector3 rel_pos = pos - PositionTrajStart.Vect();
+	  double   len  = rel_pos.Dot(track_line);
+	  if(len>TrackStubLength){continue;}
+	  double   perp = (rel_pos - len*track_line).Mag();
+	  TrackStubResidual += perp;
+	  ++TrackStubResidual_iter;
+	}
+      }
+      
+      sTrueTrackLengh_TreeVal[fShowerModuleLabel].push_back(TrackStubLength); 
+      sTrueTrackSpread_TreeVal[fShowerModuleLabel].push_back(TrackStubResidual/TrackStubResidual_iter); 
+	    
+    
+
       //The Start of position for the electron shower is PositionTrajStart but the start position for photon showers is at the end of the shower (the start of the e+- track)
       if(MCShowerParticle->PdgCode() == 22){
         PositionTrajStart = PositionTrajEnd;
@@ -1224,7 +1277,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       TrueShowerDirection = TrueShowerDirection.Unit();
 
 
-      //Initial track lentgh of the shower.
+      //Initial track lentgh of the shower. NEEDS UPDATING
       double TrueTrackLength = TrueShowerDirection.Mag();
 
       //Remove this
@@ -1233,9 +1286,9 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       //Bools to fill metric histrograms wheen needed.
       bool EvaluateShowerDirection       = false;
       bool EvaluateShowerStart           = false;
-      bool EvaluatesLength          = false;
+      bool EvaluatesLength               = false;
       bool EvaluateShowerEnergy          = false;
-      bool EvaluatesdEdx            = false;
+      bool EvaluatesdEdx                 = false;
       bool EvalulateGeoProjectionMatched = false;
 
       //Evaulate 3D Shower Reconstruction Dependent Metrics
@@ -1421,7 +1474,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       }
 
 
-      //Get the clusters associated to the shower.
+      //Get the clusters associated to the shower.Needs Work.
       if(fmch.isValid()){
         art::Handle<std::vector<recob::Cluster > > clusterHandle;
         evt.get(fmch.at(shower.key()).front().id(),clusterHandle);
@@ -1571,6 +1624,11 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     sTrackHitComp_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sTrackHitPurity_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sTrackHitCompPurity_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sTrueTrackLengh_TreeVal[fShowerModuleLabels[shwrlab_it]].clear(); 
+    sTrueTrackSpread_TreeVal[fShowerModuleLabels[shwrlab_it]].clear(); 
+    sPDG_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sMother_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sPFPID_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
 
     pfpNeutrinos_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     pfpTracks_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
@@ -1964,8 +2022,14 @@ void ana::ShowerValidation::endJob() {
   std::cout << "Number of reco showers: " << numrecoshowers  << std::endl;
   std::cout << "Number of reco showers analysed: " << numrecoshowersana  << std::endl;
 
-}
+  if(numrecoshowersana == 0){
+    std::ofstream myfile;
+    myfile.open ("histcomp.txt");
+    myfile << "0";
+    myfile.close();
 
+  }
+}
 
 
 DEFINE_ART_MODULE(ana::ShowerValidation)

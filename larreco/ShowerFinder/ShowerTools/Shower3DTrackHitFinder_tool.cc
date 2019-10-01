@@ -52,13 +52,17 @@ namespace ShowerRecoTools{
     
     //Fcl paramters
     float fMaxProjectionDist;    //Maximum projection along shower direction.
-                                 //length of cylinder
+    float MaxProjectionDist;     //length of cylinder
     float fMaxPerpendicularDist; //Maximum perpendicular distance, radius of cylinder
+    float MaxPerpendicularDist;
     bool  fForwardHitsOnly;      //Only take hits downstream of shower vertex 
                                  //(projection>0)
     bool  fDebugEVD;             //Make Debug Event Display
     bool  fAllowDyanmicLength;   //Use the initial track length instead of the 
                                  //fMaxProjectionDist
+    bool  fScaleWithEnergy;
+    float fEnergyResidualConst; 
+    float fEnergyLengthConst;
     
     art::InputTag fPFParticleModuleLabel;
     
@@ -72,6 +76,9 @@ namespace ShowerRecoTools{
     fForwardHitsOnly(pset.get<bool>("ForwardHitsOnly")),
     fDebugEVD(pset.get<bool>("DebugEVD")),
     fAllowDyanmicLength(pset.get<bool>("AllowDyanmicLength")),
+    fScaleWithEnergy(pset.get<bool>("ScaleWithEnergy")),
+    fEnergyResidualConst(pset.get<float>("EnergyResidualConst")),
+    fEnergyLengthConst(pset.get<float>("EnergyLengthConst")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel"))
   {
   }
@@ -83,6 +90,9 @@ namespace ShowerRecoTools{
   int Shower3DTrackHitFinder::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
 					       art::Event& Event, 
 					       reco::shower::ShowerElementHolder& ShowerEleHolder){
+    
+    MaxProjectionDist    = fMaxProjectionDist;
+    MaxPerpendicularDist = fMaxPerpendicularDist;
 
     //If we want to use a dynamic length value on a second iteraction get theta value now
     if(fAllowDyanmicLength){
@@ -91,7 +101,22 @@ namespace ShowerRecoTools{
       }
     }
 
-    std::cout << "fMaxProjectionDist: " << fMaxProjectionDist <<  std::endl; 
+    //Check if the user want to try sclaing the paramters with respect to energy.
+    if(fScaleWithEnergy){
+      if(!ShowerEleHolder.CheckElement("ShowerEnergy")){
+	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
+	return 1;
+      }
+      std::vector<double> Energy = {-999,-999,-999};
+      ShowerEleHolder.GetElement("ShowerEnergy",Energy);
+      
+      //We should change this
+      //Assume that the max energy is the correct energy as our clustering is currently poo.
+      double  max_energy =  *max_element(std::begin(Energy), std::end(Energy))/1000;
+      MaxProjectionDist    += max_energy*fEnergyLengthConst*fMaxProjectionDist;  
+      MaxPerpendicularDist += max_energy*fEnergyResidualConst*fMaxPerpendicularDist; 
+    }
+
 
     //This is all based on the shower vertex being known. If it is not lets not do the track
     if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
@@ -186,11 +211,11 @@ namespace ShowerRecoTools{
           showerStartPosition, showerDirection, proj);
 
       if (fForwardHitsOnly){
-        if (proj>0 && proj<fMaxProjectionDist && TMath::Abs(perp)<fMaxPerpendicularDist){
+        if (proj>0 && proj<MaxProjectionDist && TMath::Abs(perp)<MaxPerpendicularDist){
           trackSpacePoints.push_back(spacePoint);
         }
       } else {
-        if (TMath::Abs(proj)<fMaxProjectionDist && TMath::Abs(perp)<fMaxPerpendicularDist){
+        if (TMath::Abs(proj)<MaxProjectionDist && TMath::Abs(perp)<MaxPerpendicularDist){
           trackSpacePoints.push_back(spacePoint);
         }
       }

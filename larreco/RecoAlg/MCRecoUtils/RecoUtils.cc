@@ -205,6 +205,8 @@ int RecoUtils::NumberofPrimaryHitsFromTrack(int TrackID, const std::vector<art::
       hitEnergies[trackIDEs.at(idIt).trackID] += trackIDEs.at(idIt).energy;
     }
 
+    if(hitEnergies.size() > 1){continue;} 
+
     //Find which track deposited the most energy. 
     int   likelytrack = -9999;
     float MaxEnergy   = -9999;

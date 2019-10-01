@@ -69,13 +69,17 @@ namespace ShowerRecoTools{
       //going too much into the plane. In Microseconds
       float fMinDistCutOff;   //Distance in wires a hit has to be from the start position
       //to be used
-      float fMaxDist;         //Distance in wires a that a trajectory point can be from a
+      float fMaxDist,MaxDist;         //Distance in wires a that a trajectory point can be from a
       //spacepoint to match to it.
-      float fdEdxTrackLength; //Max Distance a spacepoint can be away from the start of the
+      float fdEdxTrackLength,dEdxTrackLength; //Max Distance a spacepoint can be away from the start of the
       //track. In cm
       float fdEdxCut;
       bool fUseMedian;        //Use the median value as the dEdx rather than the mean.
       bool fCutStartPosition; //Remove hits using MinDistCutOff from the vertex as well.
+      bool fScaleWithEnergy;
+      float fEnergyResidualConst; 
+      float fEnergyLengthConst;
+
       art::InputTag fPFParticleModuleLabel;
 
   };
@@ -93,6 +97,9 @@ namespace ShowerRecoTools{
     fdEdxCut(pset.get<float>("dEdxCut")),
     fUseMedian(pset.get<bool>("UseMedian")),
     fCutStartPosition(pset.get<bool>("CutStartPosition")),
+    fScaleWithEnergy(pset.get<bool>("ScaleWithEnergy")),
+    fEnergyResidualConst(pset.get<float>("EnergyResidualConst")),
+    fEnergyLengthConst(pset.get<float>("EnergyLengthConst")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel"))
   {
   }
@@ -104,6 +111,26 @@ namespace ShowerRecoTools{
   int ShowerSlidingStandardCalodEdx::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
       art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
+    
+    MaxDist         = fMaxDist;
+    dEdxTrackLength = fdEdxTrackLength;
+
+    //Check if the user want to try sclaing the paramters with respect to energy.
+    if(fScaleWithEnergy){
+      if(!ShowerEleHolder.CheckElement("ShowerEnergy")){
+	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
+	return 1;
+      }
+      std::vector<double> Energy = {-999,-999,-999};
+      ShowerEleHolder.GetElement("ShowerEnergy",Energy);
+      
+      //We should change this
+      //Assume that the max energy is the correct energy as our clustering is currently poo.
+      double max_energy =  *max_element(std::begin(Energy), std::end(Energy))/1000;
+      MaxDist          += max_energy*fEnergyResidualConst*fMaxDist;
+      dEdxTrackLength  += max_energy*fEnergyLengthConst*fdEdxTrackLength;
+
+      }
 
 
     // Shower dEdx calculation
@@ -178,7 +205,7 @@ namespace ShowerRecoTools{
       const art::Ptr<recob::Hit> hit = hits[0];
       double wirepitch = fGeom->WirePitch((geo::PlaneID)hit->WireID());
 
-      std::cout << "hit charge: " << hit->Integral() << " fake dEdx: " << fCalorimetryAlg.dEdx_AREA(hit->Integral()/wirepitch, hit->PeakTime(), hit->WireID().Plane) << " plane: " << hit->WireID().Plane << std::endl;
+      //      std::cout << "hit charge: " << hit->Integral() << " fake dEdx: " << fCalorimetryAlg.dEdx_AREA(hit->Integral()/wirepitch, hit->PeakTime(), hit->WireID().Plane) << " plane: " << hit->WireID().Plane << std::endl;
 
       //Only consider hits in the same tpc
       geo::PlaneID planeid = hit->WireID();
@@ -189,9 +216,9 @@ namespace ShowerRecoTools{
       double dist_from_start = (IShowerTool::GetTRACSAlg().SpacePointPosition(sp) - ShowerStartPosition).Mag();
 
       if(fCutStartPosition){
-        if(dist_from_start < fMinDistCutOff*wirepitch){std::cout << " too close to the start" << std::endl; continue;}
+        if(dist_from_start < fMinDistCutOff*wirepitch){continue;}
 
-        if(dist_from_start > fdEdxTrackLength){std::cout << " too far away" << std::endl; continue;}
+        if(dist_from_start > dEdxTrackLength){continue;}
       }
 
       //Find the closest trajectory point of the track. These should be in order if the user has used ShowerTrackTrajToSpacepoint_tool but the sake of gernicness I'll get the cloest sp.
@@ -210,14 +237,14 @@ namespace ShowerRecoTools{
 
         TVector3 pos = IShowerTool::GetTRACSAlg().SpacePointPosition(sp) - TrajPosition;
 
-        if(pos.Mag() < MinDist && pos.Mag()< fMaxDist*wirepitch){
+        if(pos.Mag() < MinDist && pos.Mag()< MaxDist*wirepitch){
           MinDist = pos.Mag();
           index = traj;
         }
       }
 
       //If there is no matching trajectory point then bail.
-      if(index == 999){std::cout << "no matched point" << std::endl; continue;}
+      if(index == 999){continue;}
 
       geo::Point_t TrajPositionPoint = InitialTrack.LocationAtPoint(index);
       TVector3 TrajPosition = {TrajPositionPoint.X(),TrajPositionPoint.Y(),TrajPositionPoint.Z()};
@@ -226,12 +253,12 @@ namespace ShowerRecoTools{
       TVector3 TrajPositionStart = {TrajPositionStartPoint.X(),TrajPositionStartPoint.Y(),TrajPositionStartPoint.Z()};
 
       //Ignore values with 0 mag from the start position
-      if((TrajPosition - TrajPositionStart).Mag() == 0){std::cout << " at the start" << std::endl;continue;}
-      if((TrajPosition - ShowerStartPosition).Mag() == 0){std::cout<< " at the vertex" << std::endl;continue;}
+      if((TrajPosition - TrajPositionStart).Mag() == 0){continue;}
+      if((TrajPosition - ShowerStartPosition).Mag() == 0){continue;}
 
-      if((TrajPosition-TrajPositionStart).Mag() < fMinDistCutOff*wirepitch){std::cout << " too close to the start" << std::endl;continue;}
+      if((TrajPosition-TrajPositionStart).Mag() < fMinDistCutOff*wirepitch){continue;}
 
-      if((TrajPosition-TrajPositionStart).Mag() > fdEdxTrackLength){std::cout << " too far away" << std::endl;continue;}
+      if((TrajPosition-TrajPositionStart).Mag() > dEdxTrackLength){continue;}
 
 
       //Get the direction of the trajectory point
@@ -309,12 +336,12 @@ namespace ShowerRecoTools{
       }
     }
     
-    for(auto const& dEdx_plane: dEdx_vec_cut){
-      std::cout << "Plane : " << dEdx_plane.first << std::endl;
-      for(auto const& dEdx: dEdx_plane.second){
-        std::cout << "dEdx: " << dEdx << std::endl;
-      }
-    }
+    // for(auto const& dEdx_plane: dEdx_vec_cut){
+    //   std::cout << "Plane : " << dEdx_plane.first << std::endl;
+    //   for(auto const& dEdx: dEdx_plane.second){
+    //     std::cout << "dEdx: " << dEdx << std::endl;
+    //   }
+    // }
 
 
     //Never have the stats to do a landau fit and get the most probable value. User decides if they want the median value or the mean.
@@ -329,13 +356,13 @@ namespace ShowerRecoTools{
       }
 
       std::cout << "Plane: " << dEdx_plane.first;
-      // for(auto const& dEdx: dEdx_plane.second){
-      //   std::cout<< "dEdx: " << dEdx << std::endl;
-      // }
+      for(auto const& dEdx: dEdx_plane.second){
+        std::cout<< "dEdx: " << dEdx << std::endl;
+      }
 
       if(fUseMedian){
         dEdx_val.push_back(TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0]));
-        std::cout<<"Median dEdx: "<<TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0])<<std::endl;
+	// std::cout<<"Median dEdx: "<<TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0])<<std::endl;
       }
       else{
         //Else calculate the mean value.
