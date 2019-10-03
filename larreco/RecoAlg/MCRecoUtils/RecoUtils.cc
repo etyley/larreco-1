@@ -202,6 +202,7 @@ int RecoUtils::NumberofPrimaryHitsFromTrack(int TrackID, const std::vector<art::
 
     //Loop over the IDEs associated to the hit and add up energies
     for(unsigned int idIt = 0; idIt < trackIDEs.size(); ++idIt) {
+      if(trackIDEs.at(idIt).energy < 0.1){continue;}
       hitEnergies[trackIDEs.at(idIt).trackID] += trackIDEs.at(idIt).energy;
     }
 

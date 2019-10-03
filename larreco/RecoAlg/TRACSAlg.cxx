@@ -658,7 +658,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   trackPoly->SetMarkerColor(2);
   trackPoly->Draw();
   startPoly->SetMarkerStyle(21);
-  startPoly->SetMarkerSize(2);
+  startPoly->SetMarkerSize(0.5);
   startPoly->SetMarkerColor(3);
   startPoly->Draw();
   dirPoly->SetLineWidth(1);
