@@ -1,5 +1,5 @@
 add_subdirectory(ShowerReco3D)
-macadd_subdirectory(job)
+addma_subdirectory(job)
 add_subdirectory(ShowerTools)
 
 art_make(MODULE_LIBRARIES

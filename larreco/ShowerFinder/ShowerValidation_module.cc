@@ -1098,10 +1098,11 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       }
 
       //See if the initial track hit are created. 
-      if(showertrackHandle.isValid() && trueParticles[ShowerTrackID]->PdgCode() == 11){
+      if(showertrackHandle.isValid() && trueParticles[ShowerTrackID]->PdgCode() == 11 && fmit.size()>0){
 	
 	
 	//Get the track 
+	if(fmit.size() < shower.key()){continue;}
 	std::vector< art::Ptr<recob::Track> > initial_track = fmit.at(shower.key());
 	if(initial_track.size() != 1){
 	  mf::LogError("ShowerValidation") << "Too Many Track Bailing" << std::endl;
