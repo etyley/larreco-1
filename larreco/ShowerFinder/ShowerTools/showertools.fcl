@@ -88,6 +88,9 @@ tool_type: Shower3DTrackHitFinder
              DebugEVD:              false
              AllowDyanmicLength:    false  #If the Track legth is saved use that instead of
 #MaxProjectionDist
+             ScaleWithEnergy: false
+             EnergyResidualConst: -0.09
+             EnergyLengthConst: 0.09
                        }
 
 showerpfpvertexstartposition:{
@@ -110,6 +113,10 @@ tool_type: ShowerStandardCalodEdx
              MaxHitPlane:     true #Set the best planes as the one with the most hits
              MissFirstPoint:  true #Do not use any hits from the first wire
              dEdxTrackLength: 3    #Max length from a hit can be to the start point in cm.
+             ScaleWithEnergy: false
+             EnergyResidualConst: -0.09
+             EnergyLengthConst: 0.09
+
                        }
 
 showerlmastandardcalodedx:{
@@ -251,7 +258,10 @@ tool_type: ShowerSlidingStandardCalodEdx
              CutStartPosition:     false #Remove hits using MinDistCutOff from the vertex as well
              UseMedian:            true  #Use the median dEdx rather the mean.
              PFParticleModuleLabel: "pandora"
-}
+             ScaleWithEnergy: false
+             EnergyResidualConst: -0.09
+             EnergyLengthConst: 0.09
+                              }
 
 showerresidualtrackhitfinder:{
 tool_type: ShowerResidualTrackHitFinder
@@ -263,7 +273,7 @@ tool_type: ShowerResidualTrackHitFinder
              StartFitSize:          3
              NMissPoints:           1
              ChargeWeighted:        false
-}
+                             }
 
 
 END_PROLOG
