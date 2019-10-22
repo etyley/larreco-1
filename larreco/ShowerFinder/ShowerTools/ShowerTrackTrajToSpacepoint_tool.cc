@@ -44,6 +44,12 @@ namespace ShowerRecoTools {
     float fMaxDist; //Max distance that a spacepoint can be from a trajectory
                     //point to be matched
     art::InputTag fPFParticleModuleLabel;
+    
+    std::string fInitialTrackSpacePointsOuputLabel;
+    std::string fInitialTrackHitsOuputLabel;
+    std::string fInitialTrackInputTag;
+    std::string fShowerStartPositionInputTag;
+    std::string fInitialTrackSpacePointsInputTag;
 
   };
 
@@ -51,7 +57,12 @@ namespace ShowerRecoTools {
   ShowerTrackTrajToSpacepoint::ShowerTrackTrajToSpacepoint(const fhicl::ParameterSet& pset)
     : IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
       fMaxDist(pset.get<float>("MaxDist")),
-      fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel"))
+      fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
+      fInitialTrackSpacePointsOuputLabel(pset.get<std::string>("InitialTrackSpacePointsOuputLabel")),
+      fInitialTrackHitsOuputLabel(pset.get<std::string>("InitialTrackHitsOuputLabel")),
+      fInitialTrackInputTag(pset.get<std::string>("InitialTrackInputTag")),
+      fShowerStartPositionInputTag(pset.get<std::string>("ShowerStartPositionInputTag")),
+      fInitialTrackSpacePointsInputTag(pset.get<std::string>("InitialTrackSpacePointsInputTag"))
   {
   }
 
@@ -64,36 +75,36 @@ namespace ShowerRecoTools {
 						    reco::shower::ShowerElementHolder& ShowerEleHolder){
     
     //Check the Track has been defined
-    if(!ShowerEleHolder.CheckElement("InitialTrack")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackInputTag)){
       mf::LogError("ShowerTrackTrajToSpacepoint") << "Initial track not set"<< std::endl;
       return 0;
     }
 
     //Check the start position is set.
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputTag)){
       mf::LogError("ShowerTrackTrajToSpacepoint") << "Start position not set, returning "<< std::endl;
       return 0;
     }
 
 
     //Check the Track Hits has been defined
-    if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputTag)){
       mf::LogError("ShowerTrackTrajToSpacepoint") << "Initial track spacepoints not set"<< std::endl;
       return 0;
     }
 
     //Get the start poistion
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputTag,ShowerStartPosition);
 
 
     //Get the initial track hits.
     std::vector<art::Ptr<recob::SpacePoint> > intitaltrack_sp;
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",intitaltrack_sp);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputTag,intitaltrack_sp);
 
     //Get the track
     recob::Track InitialTrack;
-    ShowerEleHolder.GetElement("InitialTrack",InitialTrack);
+    ShowerEleHolder.GetElement(fInitialTrackInputTag,InitialTrack);
 
     std::vector<art::Ptr<recob::SpacePoint> > new_intitaltrack_sp;
     //Loop over the trajectory points
@@ -159,8 +170,8 @@ namespace ShowerRecoTools {
     }
 
     //Save the spacepoints.
-    ShowerEleHolder.SetElement(new_intitaltrack_sp,"InitialTrackSpacePoints");
-    ShowerEleHolder.SetElement(trackHits,"InitialTrackHits");
+    ShowerEleHolder.SetElement(new_intitaltrack_sp,fInitialTrackSpacePointsOuputLabel);
+    ShowerEleHolder.SetElement(trackHits,fInitialTrackHitsOuputLabel);
 
     return 0;
   }

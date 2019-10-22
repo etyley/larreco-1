@@ -39,11 +39,16 @@ namespace ShowerRecoTools {
 
     private:
 
+    std::string fInitialTrackInputLabel;
+    std::string fShowerStartPositionOutputLabel;
+
   };
 
 
   ShowerTrackStartPosition::ShowerTrackStartPosition(const fhicl::ParameterSet& pset) :
-    IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools"))
+    IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
+    fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
+    fShowerStartPositionOutputLabel(pset.get<std::string>("ShowerStartPositionOutputLabel"))
   {
   }
 
@@ -62,7 +67,7 @@ namespace ShowerRecoTools {
       return 1;
     }
     recob::Track InitialTrack;
-    ShowerEleHolder.GetElement("InitialTrack",InitialTrack);
+    ShowerEleHolder.GetElement(fInitialTrackInputLabel,InitialTrack);
 
 
     //Set the shower start position as the 
@@ -70,7 +75,7 @@ namespace ShowerRecoTools {
     
     geo::Point_t  TrajPosition_vec   = InitialTrack.LocationAtPoint(0);
     TVector3 TrajPosition = {TrajPosition_vec.X(), TrajPosition_vec.Y(),TrajPosition_vec.Z()};
-    ShowerEleHolder.SetElement(TrajPosition,StartPositionErr,"ShowerStartPosition");
+    ShowerEleHolder.SetElement(TrajPosition,StartPositionErr,fShowerStartPositionOutputLabel);
 
   }
 

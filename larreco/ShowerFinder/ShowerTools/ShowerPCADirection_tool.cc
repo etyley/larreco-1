@@ -70,6 +70,11 @@ namespace ShowerRecoTools {
     bool fUseStartPosition;  //If we use the start position the drection of the
                              //PCA vector is decided as (Shower Centre - Shower Start Position). 
     bool fChargeWeighted;    //Should the PCA axis be charge weighted.
+
+    std::string fShowerStartPositionInputLabel;
+    std::string fShowerDirectionOutputLabel; 
+    std::string fShowerCentreOutputLabel;
+
   };
   
   ShowerPCADirection::ShowerPCADirection(const fhicl::ParameterSet& pset) :
@@ -78,7 +83,10 @@ namespace ShowerRecoTools {
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
     fNSegments(pset.get<float>("NSegments")),
     fUseStartPosition(pset.get<bool>("UseStartPosition")),
-    fChargeWeighted(pset.get<bool>("ChargeWeighted"))
+    fChargeWeighted(pset.get<bool>("ChargeWeighted")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fShowerDirectionOutputLabel(pset.get<std::string>("ShowerDirectionOutputLabel")),
+    fShowerCentreOutputLabel(pset.get<std::string>("ShowerCentreOutputLabel"))
   {
   }
 
@@ -127,17 +135,17 @@ namespace ShowerRecoTools {
 
     //Save the shower the center for downstream tools
     TVector3 ShowerCentreErr = {-999,-999,-999};
-    ShowerEleHolder.SetElement(ShowerCentre,ShowerCentreErr,"ShowerCentre");
+    ShowerEleHolder.SetElement(ShowerCentre,ShowerCentreErr,fShowerCentreOutputLabel);
 
     //Check if we are pointing the correct direction or not, First try the start position
     if(fUseStartPosition){
-      if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+      if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
         throw cet::exception("ShowerPCADirection") << "fUseStartPosition is true but start position is not set. Stopping.";
         return 1;
       }
       //Get the General direction as the vector between the start position and the centre
       TVector3 StartPositionVec = {-999, -999, -999};
-      ShowerEleHolder.GetElement("ShowerStartPosition",StartPositionVec);
+      ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,StartPositionVec);
 
       // Calculate the general direction of the shower
       TVector3 GeneralDir = (ShowerCentre - StartPositionVec).Unit();
@@ -154,8 +162,7 @@ namespace ShowerRecoTools {
 
       //To do
       TVector3 EigenvectorErr = {-999,-999,-999};
-      ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,"ShowerDirection");
-
+      ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,fShowerDirectionOutputLabel);
       return 0;
     }
 
@@ -171,8 +178,7 @@ namespace ShowerRecoTools {
     //To do
     TVector3 EigenvectorErr = {-999,-999,-999};
     
-    ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,"ShowerDirection");
-
+    ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,fShowerDirectionOutputLabel);
     return 0;
   }
 

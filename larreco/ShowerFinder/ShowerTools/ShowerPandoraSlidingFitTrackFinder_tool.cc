@@ -56,14 +56,25 @@ namespace ShowerRecoTools{
     //fcl paramaters 
     float fSlidingFitHalfWindow; //To Describe
     float fMinTrajectoryPoints;  //Minimum number of trajectory point to say the track is good.
+    std::string fInitialTrackOutputLabel; 
+    std::string fInitialTrackLengthOutputLabel;
+    std::string fShowerStartPositionInputLabel;
+    std::string fShowerDirectionInputLabel;
+    std::string fInitialTrackSpacePointsInputLabel;
+    std::string fInitialTrackHitsInputLabel;
   };
 
 
   ShowerPandoraSlidingFitTrackFinder::ShowerPandoraSlidingFitTrackFinder(const fhicl::ParameterSet& pset):
   IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
   fSlidingFitHalfWindow(pset.get<float> ("SlidingFitHalfWindow")),
-  fMinTrajectoryPoints(pset.get<float> ("MinTrajectoryPoints"))
-
+  fMinTrajectoryPoints(pset.get<float> ("MinTrajectoryPoints")),
+  fInitialTrackOutputLabel(pset.get<std::string>("InitialTrackOutputLabel")),
+  fInitialTrackLengthOutputLabel(pset.get<std::string>("InitialTrackLengthOutputLabel")),
+  fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+  fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),
+  fInitialTrackSpacePointsInputLabel(pset.get<std::string>("InitialTrackSpacePointsInputLabel")),
+  fInitialTrackHitsInputLabel(pset.get<std::string>("InitialTrackHitsInputLabel"))
   {
   }
 
@@ -77,7 +88,7 @@ namespace ShowerRecoTools{
       return;
     }
 
-    InitialiseProduct<std::vector<recob::Track> >("InitialTrack");
+    InitialiseProduct<std::vector<recob::Track> >(fInitialTrackOutputLabel);
     InitialiseProduct<art::Assns<recob::Shower, recob::Track > >("ShowerTrackAssn");
     InitialiseProduct<art::Assns<recob::Track, recob::Hit > >("ShowerTrackHitAssn");
 
@@ -90,27 +101,27 @@ namespace ShowerRecoTools{
       reco::shower::ShowerElementHolder& ShowerEleHolder
       ){
     //This is all based on the shower vertex being known. If it is not lets not do the track
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerPandoraSlidingFitTrackFinder") << "Start position not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+    if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
       mf::LogError("ShowerPandoraSlidingFitTrackFinder") << "Direction not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputLabel)){
       mf::LogError("ShowerPandoraSlidingFitTrackFinder") << "Initial Spacepoints not set, returning "<< std::endl;
       return 1;
     }
 
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
 
     TVector3 ShowerDirection     = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerDirection",ShowerDirection);
+    ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
     std::vector<art::Ptr<recob::SpacePoint> > spacepoints;
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",spacepoints);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,spacepoints);
 
     const pandora::CartesianVector vertexPosition(ShowerStartPosition.X(), ShowerStartPosition.Y(),
         ShowerStartPosition.Z());
@@ -166,14 +177,13 @@ namespace ShowerRecoTools{
 					       util::kBogusI, util::kBogusF, util::kBogusI, recob::tracking::SMatrixSym55(),
 					       recob::tracking::SMatrixSym55(), pfparticle.key());
     
-    ShowerEleHolder.SetElement(InitialTrack,"InitialTrack");
+    ShowerEleHolder.SetElement(InitialTrack,fInitialTrackOutputLabel);
 
     TVector3 Start = {InitialTrack.Start().X(), InitialTrack.Start().Y(), InitialTrack.Start().Z()};
     TVector3 End   = {InitialTrack.End().X(), InitialTrack.End().Y(),InitialTrack.End().Z()};
     float tracklength = (Start-End).Mag();
 
-    ShowerEleHolder.SetElement(tracklength,"InitialTrackLength");
-
+    ShowerEleHolder.SetElement(tracklength,fInitialTrackLengthOutputLabel);
 
     return 0;
   }
@@ -184,15 +194,15 @@ namespace ShowerRecoTools{
       ){
 
     //Check the track has been set
-    if(!ShowerEleHolder.CheckElement("InitialTrack")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackOutputLabel)){
       mf::LogError("ShowerPandoraSlidingFitTrackFinderAddAssn") << "Track not set so the assocation can not be made  "<< std::endl;
       return 1;
     }
 
     //Get the size of the ptr as it is.
-    int trackptrsize = GetVectorPtrSize("InitialTrack");
+    int trackptrsize = GetVectorPtrSize(fInitialTrackOutputLabel);
 
-    const art::Ptr<recob::Track> trackptr = GetProducedElementPtr<recob::Track>("InitialTrack",
+    const art::Ptr<recob::Track> trackptr = GetProducedElementPtr<recob::Track>(fInitialTrackOutputLabel,
         ShowerEleHolder,trackptrsize-1);
     const art::Ptr<recob::Shower> showerptr = GetProducedElementPtr<recob::Shower>("shower",
         ShowerEleHolder);
@@ -200,7 +210,7 @@ namespace ShowerRecoTools{
     AddSingle<art::Assns<recob::Shower, recob::Track> >(showerptr,trackptr,"ShowerTrackAssn");
 
     std::vector<art::Ptr<recob::Hit> > TrackHits;
-    ShowerEleHolder.GetElement("InitialTrackHits",TrackHits);
+    ShowerEleHolder.GetElement(fInitialTrackHitsInputLabel,TrackHits);
 
     for(auto const& TrackHit: TrackHits){
       AddSingle<art::Assns<recob::Track, recob::Hit> >(trackptr,TrackHit,"ShowerTrackHitAssn");

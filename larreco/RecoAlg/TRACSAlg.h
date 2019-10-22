@@ -96,6 +96,11 @@ class shower::TRACSAlg {
     art::ServiceHandle<geo::Geometry const> fGeom;
     art::ServiceHandle<art::TFileService>   tfs;
 
+    std::string fInitialTrackInputLabel;
+    std::string fShowerStartPositionInputLabel;
+    std::string fShowerDirectionInputLabel;
+    std::string fInitialTrackSpacePointsInputLabel;
+
 };
 
 #endif

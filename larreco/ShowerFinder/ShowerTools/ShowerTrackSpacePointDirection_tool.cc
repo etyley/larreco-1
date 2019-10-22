@@ -51,13 +51,21 @@ namespace ShowerRecoTools {
                             //(Position of SP - Vertex) rather than 
                             //(Position of SP - Track Start Point).
 
+    std::string fInitialTrackSpacePointsInputLabel;
+    std::string fShowerStartPositionInputLabel;
+    std::string fInitialTrackInputLabel;
+    std::string fShowerDirectionOutputLabel;
+
   };
 
 
   ShowerTrackSpacePointDirection::ShowerTrackSpacePointDirection(const fhicl::ParameterSet& pset)
     :IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
-     fUsePandoraVertex(pset.get<bool>("UsePandoraVertex"))
-
+     fUsePandoraVertex(pset.get<bool>("UsePandoraVertex")),
+     fInitialTrackSpacePointsInputLabel(pset.get<std::string>("InitialTrackSpacePointsInputLabel")),
+     fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+     fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
+     fShowerDirectionOutputLabel(pset.get<std::string>("ShowerDirectionOutputLabel"))
   {
   }
 
@@ -70,13 +78,13 @@ namespace ShowerRecoTools {
 						       reco::shower::ShowerElementHolder& ShowerEleHolder){
     
     //Check the Track Hits has been defined
-    if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputLabel)){
       mf::LogError("ShowerTrackSpacePointDirection") << "Initial track spacepoints not set"<< std::endl;
       return 0;
     }
 
     //Check the start position is set.
-    if(fUsePandoraVertex && !ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(fUsePandoraVertex && !ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerTrackSpacePointDirection")
 	<< "Start position not set, returning "<< std::endl;
       return 0;
@@ -85,24 +93,24 @@ namespace ShowerRecoTools {
     //Get the start poistion
     TVector3 StartPosition = {-999,-999,-999};
     if(fUsePandoraVertex){
-      ShowerEleHolder.GetElement("ShowerStartPosition",StartPosition);
+      ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,StartPosition);
     }
     else{
       //Check the Tracks has been defined
-      if(!ShowerEleHolder.CheckElement("InitialTrack")){
+      if(!ShowerEleHolder.CheckElement(fInitialTrackInputLabel)){
         mf::LogError("ShowerTrackSpacePointDirection") 
 	  << "Initial track not set"<< std::endl;
         return 0;
       }
       recob::Track InitialTrack;
-      ShowerEleHolder.GetElement("InitialTrack",InitialTrack);
+      ShowerEleHolder.GetElement(fInitialTrackInputLabel,InitialTrack);
       geo::Point_t Start_point = InitialTrack.Start();
       StartPosition = {Start_point.X(),Start_point.Y(),Start_point.Z()};
     }
 
     //Get the initial track hits.
     std::vector<art::Ptr<recob::SpacePoint> > intitaltrack_sp;
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",intitaltrack_sp);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,intitaltrack_sp);
 
     //Calculate the mean direction and the the standard deviation
     float sumX=0, sumX2=0;
@@ -156,7 +164,7 @@ namespace ShowerRecoTools {
     if(N>0){
       //Take the mean value
       TVector3 Direction = Direction_Mean.Unit();
-      ShowerEleHolder.SetElement(Direction,"ShowerDirection");
+      ShowerEleHolder.SetElement(Direction,fShowerDirectionOutputLabel);
     }
     else{
       mf::LogError("ShowerTrackSpacePointDirection") 

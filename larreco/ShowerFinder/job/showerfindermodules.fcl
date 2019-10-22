@@ -167,6 +167,14 @@ standard_tracs_shower: {
     SecondInteration:           false
     AllowPartialShowers:        false
     Verbose:                    false
+
+    ShowerStartPositionLabel: "ShowerStartPosition"
+    ShowerDirectionLabel:     "ShowerDirection"
+    ShowerEnergyLabel:        "ShowerEnergy"
+    ShowerLengthLabel:        "ShowerLength"
+    ShowerdEdxLabel:          "ShowerdEdx"
+    ShowerBestPlaneLabel:     "ShowerBestPlane"
+
 }
 
 

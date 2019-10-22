@@ -82,6 +82,12 @@ namespace ShowerRecoTools{
 
       art::InputTag fPFParticleModuleLabel;
 
+      std::string fShowerEnergyInputLabel;
+      std::string fShowerStartPositionInputLabel;
+      std::string fInitialTrackSpacePointsInputLabel;
+      std::string fInitialTrackInputLabel;
+      std::string fShowerdEdxOuputLabel;
+      std::string fShowerBestPlaneOutputLabel;
   };
 
 
@@ -100,7 +106,13 @@ namespace ShowerRecoTools{
     fScaleWithEnergy(pset.get<bool>("ScaleWithEnergy")),
     fEnergyResidualConst(pset.get<float>("EnergyResidualConst")),
     fEnergyLengthConst(pset.get<float>("EnergyLengthConst")),
-    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel"))
+    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
+    fShowerEnergyInputLabel(pset.get<std::string>("ShowerEnergyInputLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fInitialTrackSpacePointsInputLabel(pset.get<std::string>("InitialTrackSpacePointsInputLabel")),
+    fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
+    fShowerdEdxOuputLabel(pset.get<std::string>("ShowerdEdxOuputLabel")),
+    fShowerBestPlaneOutputLabel(pset.get<std::string>("ShowerBestPlaneOutputLabel"))
   {
   }
 
@@ -117,12 +129,12 @@ namespace ShowerRecoTools{
 
     //Check if the user want to try sclaing the paramters with respect to energy.
     if(fScaleWithEnergy){
-      if(!ShowerEleHolder.CheckElement("ShowerEnergy")){
+      if(!ShowerEleHolder.CheckElement(fShowerEnergyInputLabel)){
 	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
 	return 1;
       }
       std::vector<double> Energy = {-999,-999,-999};
-      ShowerEleHolder.GetElement("ShowerEnergy",Energy);
+      ShowerEleHolder.GetElement(fShowerEnergyInputLabel,Energy);
       
       //We should change this
       //Assume that the max energy is the correct energy as our clustering is currently poo.
@@ -134,22 +146,22 @@ namespace ShowerRecoTools{
 
 
     // Shower dEdx calculation
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerSlidingStandardCalodEdx") << "Start position not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputLabel)){
       mf::LogError("ShowerSlidingStandardCalodEdx") << "Initial Track Spacepoints is not set returning"<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("InitialTrack")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackInputLabel)){
       mf::LogError("ShowerSlidingStandardCalodEdx") << "Initial Track is not set"<< std::endl;
       return 1;
     }
 
     //Get the initial track hits
     std::vector<art::Ptr<recob::SpacePoint> > tracksps;
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",tracksps);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,tracksps);
 
     if(tracksps.size() == 0){
       mf::LogWarning("ShowerSlidingStandardCalodEdx") << "no spacepointsin the initial track" << std::endl;
@@ -174,12 +186,12 @@ namespace ShowerRecoTools{
 
     //Only consider hits in the same tpcs as the vertex.
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
     geo::TPCID vtxTPC = fGeom->FindTPCAtPosition(ShowerStartPosition);
 
     //Get the initial track
     recob::Track InitialTrack;
-    ShowerEleHolder.GetElement("InitialTrack",InitialTrack);
+    ShowerEleHolder.GetElement(fInitialTrackInputLabel,InitialTrack);
 
     //Don't care that I could use a vector.
     std::map<int,std::vector<double > > dEdx_vec;
@@ -396,8 +408,8 @@ namespace ShowerRecoTools{
 
 
     //Need to sort out errors sensibly.
-    ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,"ShowerdEdx");
-    ShowerEleHolder.SetElement(best_plane,"ShowerBestPlane");
+    ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,fShowerdEdxOuputLabel);
+    ShowerEleHolder.SetElement(best_plane,fShowerBestPlaneOutputLabel);
 
     return 0;
   }

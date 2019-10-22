@@ -121,9 +121,13 @@ namespace ShowerRecoTools {
     recob::Vertex new_vertex = recob::Vertex(xyz);
     TVector3 recobshower_vertex = {xyz[0], xyz[1], xyz[2]};
     TVector3 recobshower_err = {xyz[0]*0.1, xyz[1]*0.1, xyz[2]*0.1};
-    //You can set elements of the recob::shower just choose the right name (you can acess them later). You can give the property an error anf this must be done the for standard recob::shower properties;
+    //You can set elements of the recob::shower just choose the right name (you can acess them later). You can give the property an error anf this must be done the for standard recob::shower properties; The standard is to access the name via a fcl file.
     ShowerEleHolder.SetElement(recobshower_vertex,recobshower_err,"ShowerStartPosition");
 
+    //You can also set the same element with a different name so that you can compare downstream two tools. 
+    //The standard is to actually define the name in fcl.
+    ShowerEleHolder.SetElement(recobshower_vertex,recobshower_err,"ShowerExampleTool_ShowerStartPosition");
+    
     //Or you can set one of the save elements
     ShowerEleHolder.SetElement(new_vertex,"myvertex");
 

@@ -64,6 +64,10 @@ namespace ShowerRecoTools{
     bool                       fApplyChargeWeight;  //Apply charge weighting to the fit.
     art::InputTag              fPFParticleModuleLabel;
     art::InputTag              fHitsModuleLabel;
+    std::string                fShowerStartPositionInputLabel;
+    std::string                fShowerDirectionInputLabel;
+    std::string                fInitialTrackHitsOutputLabel;
+    std::string                fInitialTrackSpacePointsOutputLabel;
   };
   
 
@@ -75,7 +79,11 @@ namespace ShowerRecoTools{
     fToler(pset.get<std::vector<double> >("Toler")),
     fApplyChargeWeight(pset.get<bool>("ApplyChargeWeight")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
-    fHitsModuleLabel(pset.get<art::InputTag>("HitsModuleLabel"))
+    fHitsModuleLabel(pset.get<art::InputTag>("HitsModuleLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),
+    fInitialTrackHitsOutputLabel(pset.get<std::string>("InitialTrackHitsOutputLabel")),
+    fInitialTrackSpacePointsOutputLabel(pset.get<std::string>("InitialTrackSpacePointsOutputLabel"))
   {
     if (fNfitpass!=fNfithits.size() ||
         fNfitpass!=fToler.size()) {
@@ -92,22 +100,22 @@ namespace ShowerRecoTools{
       art::Event& Event, reco::shower::ShowerElementHolder& ShowerEleHolder){
 
     //This is all based on the shower vertex being known. If it is not lets not do the track
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("Shower2DLinearRegressionTrackHitFinder")
         << "Start position not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+    if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
       mf::LogError("Shower2DLinearRegressionTrackHitFinder")
         << "Direction not set, returning "<< std::endl;
       return 1;
     }
 
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
 
     TVector3 ShowerDirection     = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerDirection",ShowerDirection);
+    ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
     // Get the assocated pfParicle vertex PFParticles
     art::Handle<std::vector<recob::PFParticle> > pfpHandle;
@@ -171,7 +179,7 @@ namespace ShowerRecoTools{
     }
 
     //Holders for the initial track values.
-    ShowerEleHolder.SetElement(InitialTrackHits, "InitialTrackHits");
+    ShowerEleHolder.SetElement(InitialTrackHits, fInitialTrackHitsOutputLabel);
 
     //Get the associated spacepoints
     //Get the hits
@@ -198,8 +206,7 @@ namespace ShowerRecoTools{
         intitaltrack_sp.push_back(sp);
       }
     }
-    ShowerEleHolder.SetElement(intitaltrack_sp, "InitialTrackSpacePoints");
-
+    ShowerEleHolder.SetElement(intitaltrack_sp, fInitialTrackSpacePointsOutputLabel);
     return 0;
   }
 

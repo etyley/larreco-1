@@ -52,6 +52,10 @@ namespace ShowerRecoTools {
       //FCL
       art::InputTag fPFParticleModuleLabel;
       art::InputTag fHitModuleLabel;
+
+      std::string fShowerStartPositionOutputLabel;
+      std::string fTrueParticleOutputLabel;
+
   };
 
 
@@ -59,7 +63,9 @@ namespace ShowerRecoTools {
     IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
     fTRACSCheatingAlg(pset.get<fhicl::ParameterSet>("TRACSCheatingAlg")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
-    fHitModuleLabel(pset.get<art::InputTag>("HitModuleLabel"))
+    fHitModuleLabel(pset.get<art::InputTag>("HitModuleLabel")),
+    fShowerStartPositionOutputLabel(pset.get<std::string>("ShowerStartPositionOutputLabel")),
+    fTrueParticleOutputLabel(pset.get<std::string>("TrueParticleOutputLabel"))
   {
   }
 
@@ -115,9 +121,9 @@ namespace ShowerRecoTools {
     TVector3 trueStartPos = {trueParticle->Vx(),trueParticle->Vy(),trueParticle->Vz()};
 
     TVector3 trueStartPosErr = {-999,-999,-999};
-    ShowerEleHolder.SetElement(trueStartPos,trueStartPosErr,"ShowerStartPosition");
+    ShowerEleHolder.SetElement(trueStartPos,trueStartPosErr,fShowerStartPositionOutputLabel);
 
-    ShowerEleHolder.SetElement(trueParticle,"TrueParticle");
+    ShowerEleHolder.SetElement(trueParticle,fTrueParticleOutputLabel);
 
     return 0;
   }

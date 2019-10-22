@@ -65,6 +65,8 @@ namespace ShowerRecoTools {
     
     art::InputTag fPFParticleModuleLabel;
 
+    std::string   fShowerEnergyOutputLabel;
+
     //Services
     detinfo::DetectorProperties const* detprop = nullptr;
     art::ServiceHandle<geo::Geometry> fGeom;
@@ -86,6 +88,7 @@ namespace ShowerRecoTools {
     f3DGradient(pset.get<double>("ThreeDGradient")),
     f3DIntercept(pset.get<double>("ThreeDIntercept")),
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
+    fShowerEnergyOutputLabel(pset.get<std::string>("ShowerEnergyOutputLabel")),
     detprop(lar::providerFrom<detinfo::DetectorPropertiesService>())
   {
   }
@@ -177,7 +180,8 @@ namespace ShowerRecoTools {
     //TODO
     std::vector<double> EnergyError = {-999,-999,-999};
 
-    ShowerEleHolder.SetElement(ShowerLinearEnergy,EnergyError,"ShowerEnergy");
+    ShowerEleHolder.SetElement(ShowerLinearEnergy,EnergyError,fShowerEnergyOutputLabel);
+
     return 0;
   }
 

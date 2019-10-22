@@ -69,6 +69,11 @@ namespace ShowerRecoTools {
     TTree* Tree;
     float vertexDotProduct;
     float rmsGradient;
+
+    std::string fShowerStartPositionInputLabel;
+    std::string fTrueParticleInputLabel;
+    std::string fShowerDirectionOuputLabel;
+
   };
 
 
@@ -78,7 +83,10 @@ namespace ShowerRecoTools {
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
     fNSegments(pset.get<float>("NSegments")),
     fRMSFlip(pset.get<bool>("RMSFlip")),
-    fVertexFlip(pset.get<bool>("VertexFlip"))
+    fVertexFlip(pset.get<bool>("VertexFlip")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fTrueParticleInputLabel(pset.get<std::string>("TrueParticleInputLabel")),
+    fShowerDirectionOuputLabel(pset.get<std::string>("ShowerDirectionOuputLabel"))
   {
     if (vertexDotProduct||rmsGradient){
       Tree = tfs->make<TTree>("DebugTreeDirCheater", "DebugTree from shower direction cheater");
@@ -106,8 +114,8 @@ namespace ShowerRecoTools {
       return 1;
     }
 
-    if (ShowerEleHolder.CheckElement("TrueParticle")){
-      ShowerEleHolder.GetElement("TrueParticle",trueParticle);
+    if (ShowerEleHolder.CheckElement(fTrueParticleInputLabel)){
+      ShowerEleHolder.GetElement(fTrueParticleInputLabel,trueParticle);
     } else {
 
       //Could store these in the shower element holder and just calculate once?
@@ -148,7 +156,7 @@ namespace ShowerRecoTools {
     trueDir = trueDir.Unit(); // TODO: Can probably remove?
 
     TVector3 trueDirErr = {-999,-999,-999};
-    ShowerEleHolder.SetElement(trueDir,trueDirErr,"ShowerDirection");
+    ShowerEleHolder.SetElement(trueDir,trueDirErr,fShowerDirectionOuputLabel);
 
     if (fRMSFlip || fVertexFlip){
       //Get the SpacePoints and hits
@@ -178,11 +186,11 @@ namespace ShowerRecoTools {
       TVector3 ShowerCentre = IShowerTool::GetTRACSAlg().ShowerCentre(spacePoints, fmh, TotalCharge);
 
       //Check if we are pointing the correct direction or not, First try the start position
-      if(ShowerEleHolder.CheckElement("ShowerStartPosition") && fVertexFlip){
+      if(ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel) && fVertexFlip){
 
         //Get the General direction as the vector between the start position and the centre
         TVector3 StartPositionVec = {-999, -999, -999};
-        ShowerEleHolder.GetElement("ShowerStartPosition",StartPositionVec);
+        ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,StartPositionVec);
 
         TVector3 GeneralDir       = (ShowerCentre - StartPositionVec).Unit();
 

@@ -129,6 +129,11 @@ namespace ShowerRecoTools {
       bool          fMakeTrackSeed;
       float         fStartDistanceCut;
       float         fDistanceCut;
+      std::string   fShowerEnergyInputLabel; 
+      std::string   fShowerStartPositionInputLabel;
+      std::string   fShowerDirectionInputLabel;
+      std::string   fInitialTrackHitsOutputLabel;
+      std::string   fInitialTrackSpacePointsOutputLabel;
   };
 
 
@@ -150,7 +155,13 @@ namespace ShowerRecoTools {
     fRunTest(0),
     fMakeTrackSeed(pset.get<bool>("MakeTrackSeed")),
     fStartDistanceCut(pset.get<float>("StartDistanceCut")),
-    fDistanceCut(pset.get<float>("DistanceCut"))
+    fDistanceCut(pset.get<float>("DistanceCut")),
+    fShowerEnergyInputLabel(pset.get<std::string>("ShowerEnergyInputLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),
+
+    fInitialTrackHitsOutputLabel(pset.get<std::string>("InitialTrackHitsOutputLabel")),
+    fInitialTrackSpacePointsOutputLabel(pset.get<std::string>("InitialTrackSpacePointsOutputLabel"))
   {
   }
 
@@ -170,25 +181,21 @@ namespace ShowerRecoTools {
 
     //Check if the user want to try sclaing the paramters with respect to energy.
     if(fScaleWithEnergy){
-      if(!ShowerEleHolder.CheckElement("ShowerEnergy")){
+      if(!ShowerEleHolder.CheckElement(fShowerEnergyInputLabel)){
 	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
 	return 1;
       }
       std::vector<double> Energy = {-999,-999,-999};
-      ShowerEleHolder.GetElement("ShowerEnergy",Energy);
+      ShowerEleHolder.GetElement(fShowerEnergyInputLabel,Energy);
 
       //We should change this
       //Assume that the max energy is the correct energy as our clustering is currently poo.
       double max_energy =  *max_element(std::begin(Energy), std::end(Energy))/1000;
-      std::cout << "max_energy: "<< max_energy <<  " MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl; 
       MaxResidualDiff             += max_energy*fEnergyResidualConst*fMaxResidualDiff;
       MaxAverageResidual          += max_energy*fEnergyResidualConst*fMaxAverageResidual;
       StartFitSize                += max_energy*fEnergyLengthConst*(float)fStartFitSize;
       NMissPoints                 += max_energy*fEnergyResidualConst*(float)fNMissPoints;
       TrackMaxAdjacentSPDistance  += max_energy*fEnergyResidualConst*fTrackMaxAdjacentSPDistance;
-      std::cout << "max_energy: " << max_energy <<  "MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl; 
-
-
       if(StartFitSize == 0){StartFitSize = 3;}
 
       //      fNMissPoints = std::round(fNMissPoints);
@@ -198,7 +205,7 @@ namespace ShowerRecoTools {
 
       
     //This is all based on the shower vertex being known. If it is not lets not do the track
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerResidualTrackHitFinder") << "Start position not set, returning "<< std::endl;
       return 1;
     }
@@ -244,19 +251,19 @@ namespace ShowerRecoTools {
     }
 
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
 
 
     //Decide if the you want to use the direction of the shower or make one.
     if(fUseShowerDirection){ 
 
-      if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+      if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
         mf::LogError("ShowerResidualTrackHitFinder") << "Direction not set, returning "<< std::endl;
         return 1;
       }
 
       TVector3 ShowerDirection     = {-999,-999,-999};
-      ShowerEleHolder.GetElement("ShowerDirection",ShowerDirection);
+      ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
       //Order the spacepoints
       IShowerTool::GetTRACSAlg().OrderShowerSpacePoints(spacePoints,ShowerStartPosition,ShowerDirection);
@@ -285,7 +292,7 @@ namespace ShowerRecoTools {
       //Remove the back hits if requird.
       if (fForwardHitsOnly){
 
-	if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+	if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
 	  mf::LogError("ShowerResidualTrackHitFinder") << "Direction not set, returning "<< std::endl;
 	  return 1;
 	}
@@ -348,9 +355,10 @@ namespace ShowerRecoTools {
       }
     }
 
-    //Add to the holderer
-    ShowerEleHolder.SetElement(trackHits, "InitialTrackHits");
-    ShowerEleHolder.SetElement(track_sps,"InitialTrackSpacePoints");
+    //Add to the holder
+    ShowerEleHolder.SetElement(trackHits, fInitialTrackHitsOutputLabel);
+    ShowerEleHolder.SetElement(track_sps, fInitialTrackSpacePointsOutputLabel);
+    
     return 0;
   }
 

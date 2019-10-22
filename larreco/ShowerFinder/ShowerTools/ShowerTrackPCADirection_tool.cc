@@ -63,6 +63,11 @@ namespace ShowerRecoTools {
     art::InputTag fHitModuleLabel;
     bool          fChargeWeighted;  //Should we charge weight the PCA.
     unsigned int  fMinPCAPoints;    //Number of spacepoints needed to do the analysis.
+    
+    std::string fShowerStartPositionInputLabel;
+    std::string fInitialTrackSpacePointsInputLabel;
+    std::string fShowerDirectionOutputLabel;
+
   };
 
 
@@ -72,7 +77,10 @@ namespace ShowerRecoTools {
 	  fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
 	  fHitModuleLabel(pset.get<art::InputTag>("HitModuleLabel")),
 	  fChargeWeighted(pset.get<bool>         ("ChargeWeighted")),
-	  fMinPCAPoints (pset.get<unsigned int> ("MinPCAPoints"))
+	  fMinPCAPoints (pset.get<unsigned int> ("MinPCAPoints")),
+	  fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+	  fInitialTrackSpacePointsInputLabel(pset.get<std::string>("InitialTrackSpacePointsInputLabel")),
+	  fShowerDirectionOutputLabel(pset.get<std::string>("ShowerDirectionOutputLabel"))
   {
   }
 
@@ -84,11 +92,11 @@ namespace ShowerRecoTools {
 						art::Event& Event,
 						reco::shower::ShowerElementHolder& ShowerEleHolder){
     
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerTrackPCA") << "Start Position not set. Stopping" << std::endl;;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputLabel)){
       mf::LogError("ShowerTrackPCA") << "TrackSpacePoints not set, returning "<< std::endl;
       return 1;
     }
@@ -106,7 +114,7 @@ namespace ShowerRecoTools {
     }
 
     std::vector<art::Ptr<recob::SpacePoint> > trackSpacePoints;
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",trackSpacePoints);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,trackSpacePoints);
 
 
     //We cannot progress with no spacepoints.
@@ -122,7 +130,7 @@ namespace ShowerRecoTools {
 
     //Get the General direction as the vector between the start position and the centre
     TVector3 StartPositionVec = {-999, -999, -999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",StartPositionVec);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,StartPositionVec);
     TVector3 GeneralDir       = (trackCentre - StartPositionVec).Unit();
 
     //Dot product
@@ -137,7 +145,7 @@ namespace ShowerRecoTools {
 
     TVector3 EigenvectorErr = {-999,-999,-999};
 
-    ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,"ShowerDirection");
+    ShowerEleHolder.SetElement(Eigenvector,EigenvectorErr,fShowerDirectionOutputLabel);
 
     return 0;
   }

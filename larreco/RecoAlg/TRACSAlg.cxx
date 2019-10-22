@@ -3,9 +3,13 @@
 shower::TRACSAlg::TRACSAlg(const fhicl::ParameterSet& pset):
   fDetProp(lar::providerFrom<detinfo::DetectorPropertiesService>())
 {
-  fUseCollectionOnly     = pset.get<bool>("UseCollectionOnly");
-  fPFParticleModuleLabel = pset.get<art::InputTag> ("PFParticleModuleLabel");
-  fHitModuleLabel        = pset.get<art::InputTag> ("HitModuleLabel");
+  fUseCollectionOnly      = pset.get<bool>("UseCollectionOnly");
+  fPFParticleModuleLabel  = pset.get<art::InputTag> ("PFParticleModuleLabel");
+  fHitModuleLabel         = pset.get<art::InputTag> ("HitModuleLabel");
+  fInitialTrackInputLabel = pset.get<std::string>("InitialTrackInputLabel");
+  fShowerStartPositionInputLabel = pset.get<std::string>("ShowerStartPositionInputLabel");
+  fShowerDirectionInputLabel = pset.get<std::string>("ShowerDirectionInputLabel");
+  fInitialTrackSpacePointsInputLabel = pset.get<std::string>("InitialTrackSpacePointsInputLabel");
 }
 
 
@@ -355,8 +359,6 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   if (evd_disp_name_append.length() > 0) canvasName+="_"+evd_disp_name_append;
   TCanvas* canvas = tfs->make<TCanvas>(canvasName, canvasName);
 
-  std::cout << "canvasName: " << canvasName << std::endl;
-
   // Initialise variables
   double x;
   double y;
@@ -403,12 +405,12 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   //### Start Position ###
   //######################
   double startXYZ[3] = {-999,-999,-999};
-  if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+  if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
     mf::LogError("Shower3DTrackFinder") << "Start position not set, returning "<< std::endl;
     // return;
   }
   else{
-    ShowerEleHolder.GetElement("ShowerStartPosition", showerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel, showerStartPosition);
     // Create 3D point at vertex, chosed to be origin for ease of use of display
     startXYZ[0] = showerStartPosition.X();
     startXYZ[1] = showerStartPosition.Y();
@@ -431,7 +433,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   std::unique_ptr<TPolyMarker3D> allPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(spacePoints.size()));
   
 
-  if(!ShowerEleHolder.CheckElement("ShowerDirection") && !ShowerEleHolder.CheckElement("ShowerStartPosition")){
+  if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel) && !ShowerEleHolder.CheckElement("ShowerStartPosition")){
     mf::LogError("Shower3DTrackFinder") << "Direction not set, returning "<< std::endl;
     //return;
   }
@@ -439,7 +441,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
     // Get the min and max projections along the direction to know how long to draw
 
-    ShowerEleHolder.GetElement("ShowerDirection", showerDirection);
+    ShowerEleHolder.GetElement(fShowerDirectionInputLabel, showerDirection);
 
     // the direction line
     double minProj=9999999;
@@ -497,12 +499,12 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   //#########################
 
   std::unique_ptr<TPolyMarker3D> trackPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(trackSpacePoints.size()));
-  if(!ShowerEleHolder.CheckElement("InitialTrackSpacePoints")){
+  if(!ShowerEleHolder.CheckElement(fInitialTrackSpacePointsInputLabel)){
     mf::LogError("Shower3DTrackFinder") << "TrackSpacePoints not set, returning "<< std::endl;
     //    return;
   }
   else{
-    ShowerEleHolder.GetElement("InitialTrackSpacePoints",trackSpacePoints);
+    ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,trackSpacePoints);
     point = 0; // re-initialise counter
     for (auto spacePoint : trackSpacePoints){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint) - showerStartPosition;
@@ -594,11 +596,11 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   std::unique_ptr<TPolyMarker3D> TrackTrajPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(1));
   std::unique_ptr<TPolyMarker3D> TrackInitTrajPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(1));
 
-  if(ShowerEleHolder.CheckElement("InitialTrack")){
+  if(ShowerEleHolder.CheckElement(fInitialTrackInputLabel)){
 
     //Get the track
     recob::Track InitialTrack;
-    ShowerEleHolder.GetElement("InitialTrack",InitialTrack);
+    ShowerEleHolder.GetElement(fInitialTrackInputLabel,InitialTrack);
 
     if(InitialTrack.NumberTrajectoryPoints() != 0){
 

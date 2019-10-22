@@ -69,6 +69,14 @@ private:
   bool          fAllowPartialShowers;
   bool          fVerbose; 
 
+  //tool tags which calculate the characteristics of the shower 
+  std::string fShowerStartPositionLabel;
+  std::string fShowerDirectionLabel;
+  std::string fShowerEnergyLabel;
+  std::string fShowerLengthLabel;
+  std::string fShowerdEdxLabel;
+  std::string fShowerBestPlaneLabel;
+
   //fcl tools
   std::vector<std::unique_ptr<ShowerRecoTools::IShowerTool> > fShowerTools;
   std::vector<std::string>                                    fShowerToolNames;
@@ -135,10 +143,16 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
   }
 
   //Initialise the other paramters.
-  fPFParticleModuleLabel = pset.get<art::InputTag>("PFParticleModuleLabel","pandora");
-  fSecondInteration      = pset.get<bool         >("SecondInteration",false);
-  fAllowPartialShowers   = pset.get<bool         >("AllowPartialShowers",false);
-  fVerbose               = pset.get<bool         >("Verbose",false);
+  fPFParticleModuleLabel      = pset.get<art::InputTag>("PFParticleModuleLabel","pandora");
+  fShowerStartPositionLabel = pset.get<std::string  >("ShowerStartPositionLabel");
+  fShowerDirectionLabel     = pset.get<std::string  >("ShowerDirectionLabel");
+  fShowerEnergyLabel        = pset.get<std::string  >("ShowerEnergyLabel");
+  fShowerLengthLabel        = pset.get<std::string  >("ShowerLengthLabel");
+  fShowerdEdxLabel          = pset.get<std::string  >("ShowerdEdxLabel");
+  fShowerBestPlaneLabel     = pset.get<std::string  >("ShowerBestPlaneLabel");
+  fSecondInteration           = pset.get<bool         >("SecondInteration",false);
+  fAllowPartialShowers        = pset.get<bool         >("AllowPartialShowers",false);
+  fVerbose                    = pset.get<bool         >("Verbose",false);
 
   produces<std::vector<recob::Shower> >();
   produces<art::Assns<recob::Shower, recob::Hit> >();
@@ -299,11 +313,11 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     std::vector<double>                ShowerdEdxErr           = {-999,-999,-999};
     
     err = 0;
-    if(selement_holder.CheckElement("ShowerStartPosition"))    err += selement_holder.GetElementAndError("ShowerStartPosition",ShowerStartPosition,ShowerStartPositionErr);
-    if(selement_holder.CheckElement("ShowerDirection"))        err += selement_holder.GetElementAndError("ShowerDirection",ShowerDirection,ShowerDirectionErr);
-    if(selement_holder.CheckElement("ShowerEnergy"))           err += selement_holder.GetElementAndError("ShowerEnergy",ShowerEnergy,ShowerEnergyErr);
-    if(selement_holder.CheckElement("ShowerdEdx"))             err += selement_holder.GetElementAndError("ShowerdEdx",ShowerdEdx,ShowerdEdxErr  );
-    if(selement_holder.CheckElement("ShowerBestPlane"))        err += selement_holder.GetElement("ShowerBestPlane",BestPlane);
+    if(selement_holder.CheckElement(fShowerStartPositionLabel))    err += selement_holder.GetElementAndError(fShowerStartPositionLabel,ShowerStartPosition,ShowerStartPositionErr);
+    if(selement_holder.CheckElement(fShowerDirectionLabel))        err += selement_holder.GetElementAndError(fShowerDirectionLabel,ShowerDirection,ShowerDirectionErr);
+    if(selement_holder.CheckElement(fShowerEnergyLabel))           err += selement_holder.GetElementAndError(fShowerEnergyLabel,ShowerEnergy,ShowerEnergyErr);
+    if(selement_holder.CheckElement(fShowerdEdxLabel))             err += selement_holder.GetElementAndError(fShowerdEdxLabel,ShowerdEdx,ShowerdEdxErr  );
+    if(selement_holder.CheckElement(fShowerBestPlaneLabel))        err += selement_holder.GetElement(fShowerBestPlaneLabel,BestPlane);
 
     if(err){
       throw cet::exception("TRACS")  << "Error in TRACS Module. A Check on a shower property failed " << std::endl;

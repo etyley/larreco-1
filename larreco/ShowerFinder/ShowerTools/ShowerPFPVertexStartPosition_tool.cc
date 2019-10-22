@@ -54,13 +54,16 @@ namespace ShowerRecoTools{
     
     //fcl parameters
     art::InputTag fPFParticleModuleLabel; 
-
+    std::string   fShowerStartPositionOutputLabel; 
+    std::string   fShowerDirectionInputLabel;
   };
 
 
   ShowerPFPVertexStartPosition::ShowerPFPVertexStartPosition(const fhicl::ParameterSet& pset) :
     IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
-    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel",""))
+    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
+    fShowerStartPositionOutputLabel(pset.get<std::string>("ShowerStartPositionOutputLabel")),
+    fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel"))
   {
   }
 
@@ -125,15 +128,15 @@ namespace ShowerRecoTools{
       StartPositionVertex->XYZ(xyz);
       TVector3 ShowerStartPosition = {xyz[0], xyz[1], xyz[2]};
       TVector3 ShowerStartPositionErr = {-999, -999, -999};
-      ShowerEleHolder.SetElement(ShowerStartPosition,ShowerStartPositionErr,"ShowerStartPosition");
+      ShowerEleHolder.SetElement(ShowerStartPosition,ShowerStartPositionErr,fShowerStartPositionOutputLabel);
       return 0;
     }
 
     //If we there have none then use the direction to find the neutrino vertex
-    if(ShowerEleHolder.CheckElement("ShowerDirection")){
+    if(ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
 
       TVector3 ShowerDirection = {-999, -999, -999};
-      ShowerEleHolder.GetElement("ShowerDirection",ShowerDirection);
+      ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
       art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
 
@@ -158,7 +161,8 @@ namespace ShowerRecoTools{
       TVector3 ShowerStartPosition = IShowerTool::GetTRACSAlg().SpacePointPosition(spacePoints_pfp[0]);
 
       TVector3 ShowerStartPositionErr = {-999,-999,-999};
-      ShowerEleHolder.SetElement(ShowerStartPosition,ShowerStartPositionErr,"ShowerStartPosition");
+      ShowerEleHolder.SetElement(ShowerStartPosition,ShowerStartPositionErr,fShowerStartPositionOutputLabel);
+  
       return 0;
     }
 

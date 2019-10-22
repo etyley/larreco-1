@@ -44,14 +44,20 @@ namespace ShowerRecoTools {
 
     //fcl parameters
     art::InputTag fPFParticleModuleLabel; 
-
+    std::string   fShowerStartPositionOutputLabel;
+    std::string   fShowerCentreInputLabel;
+    std::string   fShowerDirectionInputLabel;
+    std::string   fShowerStartPositionInputLabel;
   };
 
 
   ShowerPCAPropergationStartPosition::ShowerPCAPropergationStartPosition(const fhicl::ParameterSet& pset) :
     IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
-    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel",""))
-
+    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel","")),
+    fShowerStartPositionOutputLabel(pset.get<std::string>("ShowerStartPositionOutputLabel")),
+    fShowerCentreInputLabel(pset.get<std::string>("ShowerCentreInputLabel")),
+    fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel"))
   { 
   }
 
@@ -65,15 +71,15 @@ namespace ShowerRecoTools {
     TVector3 ShowerCentre        = {-999,-999,-999};
 
     //Get the start position and direction and center 
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerPCAPropergationStartPosition") << "Start position not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+    if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
       mf::LogError("ShowerPCAPropergationStartPosition") << "Direction not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("ShowerCentre")){
+    if(!ShowerEleHolder.CheckElement(fShowerCentreInputLabel)){
       
       // Get the assocated pfParicle vertex PFParticles
       art::Handle<std::vector<recob::PFParticle> > pfpHandle;
@@ -111,32 +117,25 @@ namespace ShowerRecoTools {
 
     }
     else{
-      ShowerEleHolder.GetElement("ShowerCentre",ShowerCentre);
+      ShowerEleHolder.GetElement(fShowerCentreInputLabel,ShowerCentre);
     }
     
 
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
 
     TVector3 ShowerDirection     = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerDirection",ShowerDirection);
-
-    //Set the coordinates for the PCA axis.
-    //    TVector3 ShowerPCAAxis = ShowerDirection; //+ ShowerCentre;
+    ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
     //Get the projection 
     double projection = ShowerDirection.Dot(ShowerStartPosition-ShowerCentre);
-
-    std::cout << "projection " << projection << std::endl;
 
     //Get the position.
     TVector3 ShowerNewStartPosition = projection*ShowerDirection + ShowerCentre;
     TVector3 ShowerNewStartPositionErr = {-999,-999,-999};
 
-    std::cout << "Old Start Position: " << ShowerStartPosition.X() << ", " << ShowerStartPosition.Y() << ", " << ShowerStartPosition.Z() << std::endl;
-    std::cout << "Old Start Position: " << ShowerNewStartPosition.X() << ", " << ShowerNewStartPosition.Y() << ", " << ShowerNewStartPosition.Z() << std::endl;
+    ShowerEleHolder.SetElement(ShowerNewStartPosition,ShowerNewStartPositionErr,fShowerStartPositionOutputLabel);
 
-    ShowerEleHolder.SetElement(ShowerNewStartPosition,ShowerNewStartPositionErr,"ShowerStartPosition");
     return 0;
 
   }

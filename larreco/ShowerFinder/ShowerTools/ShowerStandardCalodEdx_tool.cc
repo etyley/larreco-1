@@ -56,6 +56,12 @@ namespace ShowerRecoTools{
     bool   fMissFirstPoint;  //Do not use any hits from the first wire.
     bool   fScaleWithEnergy;
     float  fEnergyLengthConst;
+    std::string fShowerEnergyInputLabel;
+    std::string fShowerStartPositionInputLabel;
+    std::string fInitialTrackHitsInputLabel;
+    std::string fShowerDirectionInputLabel;
+    std::string fShowerdEdxOutputLabel;
+    std::string fShowerBestPlaneOutputLabel;
   };
 
 
@@ -66,7 +72,13 @@ namespace ShowerRecoTools{
     fMaxHitPlane(pset.get<bool>("MaxHitPlane")),
     fMissFirstPoint(pset.get<bool>("MissFirstPoint")),
     fScaleWithEnergy(pset.get<bool>("ScaleWithEnergy")),
-    fEnergyLengthConst(pset.get<float>("EnergyLengthConst"))
+    fEnergyLengthConst(pset.get<float>("EnergyLengthConst")),
+    fShowerEnergyInputLabel(pset.get<std::string>("fShowerEnergyInputLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fInitialTrackHitsInputLabel(pset.get<std::string>("InitialTrackHitsInputLabel")),
+    fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),
+    fShowerdEdxOutputLabel(pset.get<std::string>("ShowerdEdxOutputLabel")),
+    fShowerBestPlaneOutputLabel(pset.get<std::string>("ShowerBestPlaneOutputLabel"))
   {
   }
 
@@ -83,12 +95,12 @@ namespace ShowerRecoTools{
 
     //Check if the user want to try sclaing the paramters with respect to energy.
     if(fScaleWithEnergy){
-      if(!ShowerEleHolder.CheckElement("ShowerEnergy")){
-	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
+      if(!ShowerEleHolder.CheckElement(fShowerEnergyInputLabel)){
+	mf::LogError("fStandardCalodEdx") << "ShowerEnergy not set, returning "<< std::endl;
 	return 1;
       }
       std::vector<double> Energy = {-999,-999,-999};
-      ShowerEleHolder.GetElement("ShowerEnergy",Energy);
+      ShowerEleHolder.GetElement(fShowerEnergyInputLabel,Energy);
 
       //We should change this
       //Assume that the max energy is the correct energy as our clustering is currently poo.
@@ -99,22 +111,22 @@ namespace ShowerRecoTools{
     
 
     // Shower dEdx calculation
-    if(!ShowerEleHolder.CheckElement("ShowerStartPosition")){
+    if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
       mf::LogError("ShowerStandardCalodEdx") << "Start position not set, returning "<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("InitialTrackHits")){
+    if(!ShowerEleHolder.CheckElement(fInitialTrackHitsInputLabel)){
       mf::LogError("ShowerStandardCalodEdx") << "Initial Track Hits not set returning"<< std::endl;
       return 1;
     }
-    if(!ShowerEleHolder.CheckElement("ShowerDirection")){
+    if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel)){
       mf::LogError("ShowerStandardCalodEdx") << "Shower Direction not set"<< std::endl;
       return 1;
     }
 
     //Get the initial track hits
     std::vector<art::Ptr<recob::Hit> > trackhits;
-    ShowerEleHolder.GetElement("InitialTrackHits",trackhits);
+    ShowerEleHolder.GetElement(fInitialTrackHitsInputLabel,trackhits);
 
     if(trackhits.size() == 0){
       mf::LogWarning("ShowerStandardCalodEdx") << "Not Hits in the initial track" << std::endl;
@@ -122,10 +134,10 @@ namespace ShowerRecoTools{
     }
 
     TVector3 ShowerStartPosition = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerStartPosition",ShowerStartPosition);
+    ShowerEleHolder.GetElement(fShowerStartPositionInputLabel,ShowerStartPosition);
 
     TVector3 showerDir = {-999,-999,-999};
-    ShowerEleHolder.GetElement("ShowerDirection",showerDir);
+    ShowerEleHolder.GetElement(fShowerDirectionInputLabel,showerDir);
 
     geo::TPCID vtxTPC = fGeom->FindTPCAtPosition(ShowerStartPosition);
 
@@ -229,7 +241,7 @@ namespace ShowerRecoTools{
     //TODO
     std::vector<double> dEdxVecErr = {-999,-999,-999};
 
-    ShowerEleHolder.SetElement(dEdxVec,dEdxVecErr,"ShowerdEdx");
+    ShowerEleHolder.SetElement(dEdxVec,dEdxVecErr,fShowerdEdxOutputLabel);
 
     //Set The best plane
     if (fMaxHitPlane){
@@ -240,7 +252,7 @@ namespace ShowerRecoTools{
       throw cet::exception("ShowerStandardCalodEdx") << "No best plane set";
       return 1;
     } else {
-      ShowerEleHolder.SetElement(bestPlane,"ShowerBestPlane");
+      ShowerEleHolder.SetElement(bestPlane,fShowerBestPlaneOutputLabel);
     }
 
     return 0;
