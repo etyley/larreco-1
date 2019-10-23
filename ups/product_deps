@@ -11,7 +11,7 @@ product         version
 larsim		v08_13_03
 eigen		v3_3_4a
 tensorflow      v1_3_0e		-	optional
-larpandoracontent  v03_15_04		
+larpandoracontent  v03_15_07		
 
 cetbuildtools	v7_13_02	-	only_for_build
 end_product_list
