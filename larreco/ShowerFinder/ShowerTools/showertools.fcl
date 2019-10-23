@@ -108,12 +108,15 @@ tool_type: Shower3DTrackHitFinder
              DebugEVD:              false
              AllowDyanmicLength:    false  #If the Track legth is saved use that instead of
 #MaxProjectionDist
-            InitialTrackLengthInputLabel: "InitialTrackLength" 
-            ShowerEnergyInputLabel: "ShowerEnergy"
-            ShowerStartPositionInputLabel: "ShowerStartPosition"
-            ShowerDirectionInputLabel: "ShowerDirection"
-            InitialTrackHitsOuputLabel: "InitialTrackHits"
-            InitialTrackSpacePointsOutputLabel: "InitialTrackSpacePoints"
+             ScaleWithEnergy:      false #Vary the parameters as function of E
+             EnergyResidualConst:  0.1   #Linear dimensionless value to vary the energy with
+             EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy w
+             InitialTrackLengthInputLabel: "InitialTrackLength" 
+             ShowerEnergyInputLabel: "ShowerEnergy"
+             ShowerStartPositionInputLabel: "ShowerStartPosition"
+             ShowerDirectionInputLabel: "ShowerDirection"
+             InitialTrackHitsOuputLabel: "InitialTrackHits"
+             InitialTrackSpacePointsOutputLabel: "InitialTrackSpacePoints"
 }
 
 showerpfpvertexstartposition:{
@@ -132,6 +135,9 @@ tool_type: ShowerStandardCalodEdx
              MaxHitPlane:     true #Set the best planes as the one with the most hits
              MissFirstPoint:  true #Do not use any hits from the first wire
              dEdxTrackLength: 3    #Max length from a hit can be to the start point in cm.
+
+             ScaleWithEnergy:      false #Vary the parameters as function of E
+             EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy wit
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              InitialTrackHitsInputLabel: "InitialTrackHits"
@@ -312,6 +318,9 @@ tool_type: ShowerSlidingStandardCalodEdx
              dEdxCut:                1.
              CutStartPosition:     false #Remove hits using MinDistCutOff from the vertex as well
              UseMedian:            true  #Use the median dEdx rather the mean.
+             ScaleWithEnergy:      false #Vary the parameters as function of E
+             EnergyResidualConst:  0.1   #Linear dimensionless value to vary the energy with
+             EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy with
              PFParticleModuleLabel: "pandora"
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition" 
@@ -327,15 +336,18 @@ tool_type: ShowerResidualTrackHitFinder
              PFParticleModuleLabel: "pandora"
              UseShowerDirection:    true
              ForwardHitsOnly:       true
-             MaxResidualDiff:       0.8
-             StartFitSize:          3
-             NMissPoints:           1
+             MaxResidualDiff:       0.3
+             MaxAverageResidual:    0.5
+             TrackMaxAdjacentSPDistance: 3.8160404930371678
+             StartFitSize:          12
+             NMissPoints:           10
              ChargeWeighted:        false
+             ScaleWithEnergy:       false #Vary the parameters as function of E
              EnergyResidualConst:   0.1
              EnergyLengthConst:     0.1
              MakeTrackSeed:         true
              StartDistanceCut:      0 
-             DistanceCut:           10
+             DistanceCut:           999
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              InitialTrackHitsOutputLabel: "InitialTrackHits"

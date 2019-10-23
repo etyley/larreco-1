@@ -135,11 +135,9 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
   //  Initialise the EDProducer ptr in the tools 
   std::vector<std::string> SetupTools;
   for(unsigned int i=0; i<fShowerTools.size(); ++i){ 
-    if(std::find(SetupTools.begin(), SetupTools.end(), fShowerToolNames[i]) != SetupTools.end()){continue;}
     fShowerTools[i]->SetPtr(this);
     fShowerTools[i]->InitaliseProducerPtr(uniqueproducerPtrs);
     fShowerTools[i]->InitialiseProducers();
-    SetupTools.push_back(fShowerToolNames[i]);
   }
 
   //Initialise the other paramters.
@@ -371,13 +369,8 @@ void reco::shower::TRACS::produce(art::Event& evt) {
 		
     //AddAssociations
     int assn_err = 0;
-    std::vector<std::string> SetupTools;
-    unsigned int j=0;
     for(auto const& fShowerTool: fShowerTools){
-      if(std::find(SetupTools.begin(), SetupTools.end(), fShowerToolNames[j]) != SetupTools.end()){++j; continue;}
       assn_err += fShowerTool->AddAssociations(evt,selement_holder);
-      SetupTools.push_back(fShowerToolNames[j]);
-      ++j;
     }
     if(!fAllowPartialShowers && assn_err > 0){
       mf::LogError("TRACS") << "A association failed and you are not allowing partial showers. The event will not be added to the event " << std::endl; 

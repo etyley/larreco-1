@@ -130,9 +130,10 @@ namespace ShowerRecoTools{
       //Example: InitialiseProduct<std::vector<recob<vertex>>("MyVertex")
       template <class T>
         void InitialiseProduct(std::string Name, std::string InstanceName=""){
-          producerPtr->produces<T>(InstanceName);
-          UniquePtrs->SetShowerUniqueProduerPtr(type<T>(),Name,InstanceName);
-        }
+	      int set = UniquePtrs->SetShowerUniqueProduerPtr(type<T>(),Name,InstanceName);
+	      if(set == 0){producerPtr->produces<T>(InstanceName);}
+	      return;
+      }
 
       //Function so that the user can add assocations to the event.
       //Example: AddSingle<art::Assn<recob::Vertex,recob::shower>((art::Ptr<recob::Vertex>) Vertex, (art::Prt<recob::shower>) Shower), "myassn")

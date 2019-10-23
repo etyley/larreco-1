@@ -217,12 +217,10 @@ namespace ShowerRecoTools{
       const art::Ptr<recob::Hit> hit = hits[0];
       double wirepitch = fGeom->WirePitch((geo::PlaneID)hit->WireID());
 
-      //      std::cout << "hit charge: " << hit->Integral() << " fake dEdx: " << fCalorimetryAlg.dEdx_AREA(hit->Integral()/wirepitch, hit->PeakTime(), hit->WireID().Plane) << " plane: " << hit->WireID().Plane << std::endl;
-
       //Only consider hits in the same tpc
       geo::PlaneID planeid = hit->WireID();
       geo::TPCID TPC = planeid.asTPCID();
-      if (TPC !=vtxTPC){std::cout << " not in the same tpc" << std::endl;continue;}
+      if (TPC !=vtxTPC){continue;}
 
       //Ignore spacepoints within a few wires of the vertex.
       double dist_from_start = (IShowerTool::GetTRACSAlg().SpacePointPosition(sp) - ShowerStartPosition).Mag();
@@ -245,7 +243,7 @@ namespace ShowerRecoTools{
         //ignore bogus info.
         auto flags = InitialTrack.FlagsAtPoint(traj);
         if(flags.isSet(recob::TrajectoryPointFlagTraits::NoPoint))
-        {std::cout << "bogus point "<< std::endl; continue;}
+        {continue;}
 
         TVector3 pos = IShowerTool::GetTRACSAlg().SpacePointPosition(sp) - TrajPosition;
 
@@ -307,8 +305,6 @@ namespace ShowerRecoTools{
       //Calculate the dEdx
       double dEdx = fCalorimetryAlg.dEdx_AREA(dQdx, hit->PeakTime(), planeid.Plane);
 
-      // std::cout << " true dEdx: " << dEdx << " dQdx: " << dQdx << " trackpitch: " << trackpitch << " plane: " << planeid.Plane  << " distance away: " << (TrajPosition-TrajPositionStart).Mag() << std::endl;
-
       //Add the value to the dEdx
       dEdx_vec[planeid.Plane].push_back(dEdx);
 
@@ -330,12 +326,6 @@ namespace ShowerRecoTools{
       dEdx_vec_cut[plane_id.Plane] = {};
     }
 
-    for(auto const& dEdx_plane: dEdx_vec){
-      std::cout << "Plane : " << dEdx_plane.first << std::endl;
-      for(auto const& dEdx: dEdx_plane.second){
-        std::cout << "dEdx: " << dEdx << std::endl;
-      }
-    }
 
     for(auto& dEdx_plane: dEdx_vec){
       FinddEdxLength(dEdx_plane.second, dEdx_vec_cut[dEdx_plane.first]);
@@ -348,14 +338,6 @@ namespace ShowerRecoTools{
       }
     }
     
-    // for(auto const& dEdx_plane: dEdx_vec_cut){
-    //   std::cout << "Plane : " << dEdx_plane.first << std::endl;
-    //   for(auto const& dEdx: dEdx_plane.second){
-    //     std::cout << "dEdx: " << dEdx << std::endl;
-    //   }
-    // }
-
-
     //Never have the stats to do a landau fit and get the most probable value. User decides if they want the median value or the mean.
     std::vector<double> dEdx_val;
     std::vector<double> dEdx_valErr;
@@ -367,14 +349,8 @@ namespace ShowerRecoTools{
         continue;
       }
 
-      std::cout << "Plane: " << dEdx_plane.first;
-      for(auto const& dEdx: dEdx_plane.second){
-        std::cout<< "dEdx: " << dEdx << std::endl;
-      }
-
       if(fUseMedian){
         dEdx_val.push_back(TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0]));
-	// std::cout<<"Median dEdx: "<<TMath::Median((dEdx_plane.second).size(), &(dEdx_plane.second)[0])<<std::endl;
       }
       else{
         //Else calculate the mean value.
@@ -386,16 +362,6 @@ namespace ShowerRecoTools{
         dEdx_val.push_back(dEdx_mean/(float)(dEdx_plane.second).size());
       }
     }
-
-    //Work out which is the best plane from the most hits.
-    // int max_hits   = -999;
-    // int best_plane = -999;
-    // for(auto const& num_hits_plane: num_hits){
-    //   if(num_hits_plane.second > max_hits){
-    //     best_plane = num_hits_plane.first;
-    //     max_hits = num_hits_plane.second;
-    //   }
-    // }
 
     int max_hits   = -999;
     int best_plane = -999;
