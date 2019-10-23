@@ -109,7 +109,7 @@ tool_type: Shower3DTrackHitFinder
              AllowDyanmicLength:    false  #If the Track legth is saved use that instead of
 #MaxProjectionDist
              ScaleWithEnergy:      false #Vary the parameters as function of E
-             EnergyResidualConst:  0.1   #Linear dimensionless value to vary the energy with
+             EnergyResidualConst:  -0.1   #Linear dimensionless value to vary the energy with
              EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy w
              InitialTrackLengthInputLabel: "InitialTrackLength" 
              ShowerEnergyInputLabel: "ShowerEnergy"
@@ -135,7 +135,6 @@ tool_type: ShowerStandardCalodEdx
              MaxHitPlane:     true #Set the best planes as the one with the most hits
              MissFirstPoint:  true #Do not use any hits from the first wire
              dEdxTrackLength: 3    #Max length from a hit can be to the start point in cm.
-
              ScaleWithEnergy:      false #Vary the parameters as function of E
              EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy wit
              ShowerEnergyInputLabel: "ShowerEnergy"
@@ -319,7 +318,7 @@ tool_type: ShowerSlidingStandardCalodEdx
              CutStartPosition:     false #Remove hits using MinDistCutOff from the vertex as well
              UseMedian:            true  #Use the median dEdx rather the mean.
              ScaleWithEnergy:      false #Vary the parameters as function of E
-             EnergyResidualConst:  0.1   #Linear dimensionless value to vary the energy with
+             EnergyResidualConst:  -0.1   #Linear dimensionless value to vary the energy with
              EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy with
              PFParticleModuleLabel: "pandora"
              ShowerEnergyInputLabel: "ShowerEnergy"
@@ -343,7 +342,7 @@ tool_type: ShowerResidualTrackHitFinder
              NMissPoints:           10
              ChargeWeighted:        false
              ScaleWithEnergy:       false #Vary the parameters as function of E
-             EnergyResidualConst:   0.1
+             EnergyResidualConst:   -0.1
              EnergyLengthConst:     0.1
              MakeTrackSeed:         true
              StartDistanceCut:      0 
@@ -364,6 +363,5 @@ showerpcapropergationstartposition:{
     ShowerDirectionInputLabel: "ShowerDirection"
     ShowerStartPositionInputLabel: "ShowerStartPosition" 
 }
-
 
 END_PROLOG

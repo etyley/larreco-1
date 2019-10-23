@@ -399,7 +399,6 @@ namespace ShowerRecoTools{
 	
 	//We are really poo at physics and so attempt to find the pair production
 	if(TMath::Abs(dEdx_val.back() - dEdx) < fdEdxCut){
-	  std::cout << "dEdx accepted" << std::endl;
 	  dEdx_val.push_back(dEdx);
 	  continue;
 	}
@@ -407,14 +406,12 @@ namespace ShowerRecoTools{
 	  //Maybe its a landau fluctation lets try again.
 	  if(dEdx_iter<dEdx_vec.size()-1){
 	    if(TMath::Abs(dEdx_val.back() - dEdx_vec[dEdx_iter+1]) < fdEdxCut){
-	      std::cout << "next hit is good enough continue" << std::endl;
 	      continue;
 	    }
 	  }
 	  //I'll let one more value 
 	  if(dEdx_iter<dEdx_vec.size()-2){
 	    if(TMath::Abs(dEdx_val.back() - dEdx_vec[dEdx_iter+2]) < fdEdxCut){
-	      std::cout << "next next hit is good enough continue" << std::endl;
 	      continue;
 	    }
 	  }
