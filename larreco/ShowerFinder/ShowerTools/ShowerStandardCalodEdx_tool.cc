@@ -73,7 +73,7 @@ namespace ShowerRecoTools{
     fMissFirstPoint(pset.get<bool>("MissFirstPoint")),
     fScaleWithEnergy(pset.get<bool>("ScaleWithEnergy")),
     fEnergyLengthConst(pset.get<float>("EnergyLengthConst")),
-    fShowerEnergyInputLabel(pset.get<std::string>("fShowerEnergyInputLabel")),
+    fShowerEnergyInputLabel(pset.get<std::string>("ShowerEnergyInputLabel")),
     fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
     fInitialTrackHitsInputLabel(pset.get<std::string>("InitialTrackHitsInputLabel")),
     fShowerDirectionInputLabel(pset.get<std::string>("ShowerDirectionInputLabel")),

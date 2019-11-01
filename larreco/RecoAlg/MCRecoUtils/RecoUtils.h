@@ -74,6 +74,8 @@ namespace RecoUtils{
 
   std::map<geo::PlaneID,int> NumberofHitsThatContainEnergyDepositedByTracks(std::vector<int> TrackIDs, const std::vector<art::Ptr<recob::Hit> >& hits);//Number of Hits that containt energy from the list of tracks.
 
+  int NumberofPrimaryHitsWithAllTracks(std::vector<int>& TrackIDs, const std::vector<art::Ptr<recob::Hit> >& hits);
+
 }
 
 #endif

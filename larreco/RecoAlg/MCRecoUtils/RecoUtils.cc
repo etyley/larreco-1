@@ -224,7 +224,32 @@ int RecoUtils::NumberofPrimaryHitsFromTrack(int TrackID, const std::vector<art::
   return HitNum;
 }
 
+int RecoUtils::NumberofPrimaryHitsWithAllTracks(std::vector<int>& TrackIDs, const std::vector<art::Ptr<recob::Hit> >& hits){
 
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  
+  int HitNum = 0;
+
+  //Loop over the hits and find the IDE
+  for (std::vector<art::Ptr<recob::Hit> >::const_iterator hitIt = hits.begin(); hitIt != hits.end(); ++hitIt) {
+
+    art::Ptr<recob::Hit> hit = *hitIt;
+  
+    std::vector<sim::TrackIDE> trackIDEs = bt_serv->HitToTrackIDEs(hit);
+    std::map<int,float> hitEnergies; 
+    int track_ids = 0;
+
+    //Loop over the IDEs associated to the hit and add up energies
+    for(unsigned int idIt = 0; idIt < trackIDEs.size(); ++idIt) {
+      
+      if(trackIDEs.at(idIt).energy < 0.3){continue;}
+      if(std::find(TrackIDs.begin(),TrackIDs.end(),(int)trackIDEs.at(idIt).trackID) == TrackIDs.end()){continue;}
+      ++track_ids;
+    }
+    if(track_ids == (int) TrackIDs.size()){++HitNum;}
+  }
+  return HitNum;
+}
 
 std::map<geo::PlaneID,int> RecoUtils::NumberofPlaneHitsFromTrack(int TrackID, const std::vector<art::Ptr<recob::Hit> >& hits){
 

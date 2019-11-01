@@ -1098,7 +1098,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       }
 
       //See if the initial track hit are created. 
-      if(showertrackHandle.isValid() && trueParticles[ShowerTrackID]->PdgCode() == 11 && fmit.size()>0){
+      if(showertrackHandle.isValid() && fmit.size()>0){
 	
 	
 	//Get the track 
@@ -1112,9 +1112,26 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	//Get the hits.
 	std::vector<art::Ptr<recob::Hit> > initialtrackhits  = fmith.at(initial_track[0].key());
 	
-	//Where do the hits come from 
-	int initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
-	int true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
+	int initialtrack_hits_from_mother = 999;
+	int true_num_hits_initialTrack  = 999;
+
+	//Where do the hits come from
+	if(trueParticles[ShowerTrackID]->PdgCode() == 11){
+	initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
+	true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
+	}
+	else{
+	  //Get the ee+ pair daughters from the photon. 
+	  std::vector<int> Electrons;
+	  for(auto const& daughter: ShowersMothers[ShowerTrackID]){
+	    if(trueParticles[daughter]->Mother() == ShowerTrackID && TMath::Abs(trueParticles[daughter]->PdgCode()) == 11){
+	      Electrons.push_back(daughter);
+	    }
+	  }
+	  initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,initialtrackhits);
+	  true_num_hits_initialTrack    = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,showerhits);
+	}
+	std::cout << "initialtrack_hits_from_mother: " << initialtrack_hits_from_mother << " true_num_hits_initialTrack: " << true_num_hits_initialTrack << std::endl;
 
 	//Calculate metrics 
 	if(true_num_hits_initialTrack != 0){

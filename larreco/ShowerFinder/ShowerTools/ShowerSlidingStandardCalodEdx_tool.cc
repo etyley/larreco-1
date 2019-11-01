@@ -124,6 +124,8 @@ namespace ShowerRecoTools{
       art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
     
+    std::cout << "test" << std::endl;
+
     MaxDist         = fMaxDist;
     dEdxTrackLength = fdEdxTrackLength;
 
@@ -268,8 +270,6 @@ namespace ShowerRecoTools{
 
       if((TrajPosition-TrajPositionStart).Mag() < fMinDistCutOff*wirepitch){continue;}
 
-      if((TrajPosition-TrajPositionStart).Mag() > dEdxTrackLength){continue;}
-
 
       //Get the direction of the trajectory point
       geo::Vector_t TrajDirection_vec = InitialTrack.DirectionAtPoint(index);
@@ -296,6 +296,12 @@ namespace ShowerRecoTools{
         continue;
       }
 
+      //Iterate the number of hits on the plane
+      ++num_hits[planeid.Plane];
+
+      if((TrajPosition-TrajPositionStart).Mag() > dEdxTrackLength){continue;}
+      
+
       //If we still exist then we can be used in the calculation. Calculate the 3D pitch
       double trackpitch = (TrajDirection*(wirepitch/TrajDirection.Dot(PlaneDirection))).Mag();
 
@@ -311,8 +317,6 @@ namespace ShowerRecoTools{
       //Save the energy.
       dE_vec[planeid.Plane].push_back(dEdx*trackpitch);
 
-      //Iterate the number of hits on the plane
-      ++num_hits[planeid.Plane];
     }
 
     //Search for blow ups and gradient changes.
@@ -326,17 +330,30 @@ namespace ShowerRecoTools{
       dEdx_vec_cut[plane_id.Plane] = {};
     }
 
+    // int max_hits   = -999;
+    // int best_plane = -999;
+    // for(auto const& dEdx_plane: dEdx_vec){
+    //   if((int) dEdx_plane.second.size() > max_hits){
+    //     best_plane = dEdx_plane.first;
+    //     max_hits   = dEdx_plane.second.size();
+    //   }
+    // }
+
+    //Choose max hits based on hitnum
+    int max_hits   = -999;
+    int best_plane = -999;
+    for(auto const& num_hits_plane: num_hits){
+      if(num_hits_plane.second > max_hits){
+	best_plane = num_hits_plane.first;
+        max_hits   = num_hits_plane.second;
+      }
+    }
+    
 
     for(auto& dEdx_plane: dEdx_vec){
       FinddEdxLength(dEdx_plane.second, dEdx_vec_cut[dEdx_plane.first]);
     }
 
-    //If we cut everything in previous sample lets add everything back. 
-    for(auto& dEdx_plane: dEdx_vec_cut){
-      if(dEdx_plane.second.size() == 0){
-	dEdx_plane.second = dEdx_vec[dEdx_plane.first];
-      }
-    }
     
     //Never have the stats to do a landau fit and get the most probable value. User decides if they want the median value or the mean.
     std::vector<double> dEdx_val;
@@ -362,71 +379,114 @@ namespace ShowerRecoTools{
         dEdx_val.push_back(dEdx_mean/(float)(dEdx_plane.second).size());
       }
     }
-
-    int max_hits   = -999;
-    int best_plane = -999;
-    for(auto const& dEdx_plane: dEdx_vec_cut){
-      if((int) dEdx_plane.second.size() > max_hits){
-        best_plane = dEdx_plane.first;
-        max_hits   = dEdx_plane.second.size();
+    
+    std::cout << "#### dEdx vector ###" << std::endl;
+    for(auto const& plane: dEdx_vec_cut){
+      std::cout << "#Plane: " << plane.first << " #" << std::endl; 
+      for(auto const& dEdx: plane.second){
+	std::cout << "dEdx: " << dEdx << std::endl;
       }
     }
-
 
     //Need to sort out errors sensibly.
     ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,fShowerdEdxOuputLabel);
     ShowerEleHolder.SetElement(best_plane,fShowerBestPlaneOutputLabel);
-
+    ShowerEleHolder.SetElement(dEdx_vec_cut,"dEdxVec");
     return 0;
   }
 
 
   void ShowerSlidingStandardCalodEdx::FinddEdxLength(std::vector<double>& dEdx_vec, std::vector<double>& dEdx_val){
 
-    for(unsigned int dEdx_iter=0; dEdx_iter<dEdx_vec.size(); ++dEdx_iter){  
-      
-	//The Function of dEdx as a function of E is flat above ~10 MeV.
-	//We are looking for a jump up (or down) above the ladau width in the dEx 
-	//to account account for pair production. 
-	//Dom Estimates that the somwhere above 0.28 MeV will be a good cut but 999 will prevent this stage.
-	double dEdx = dEdx_vec[dEdx_iter];
+    //As default do not apply this cut.
+    if(fdEdxCut > 10){
+      dEdx_val = dEdx_vec;
+      return;
+    }
 
-	//We have to start somewhere add the hit.
-	if(dEdx_iter == 0){
+    std::cout << "why am I running" << std::endl;
+
+    //Can only do this with 4 hits. 
+    if(dEdx_vec.size() < 4){
+      dEdx_val = dEdx_vec;
+      return;
+    }
+
+    bool upperbound = false;
+
+    //See if we are in the upper bound or upper bound defined by the cut.
+    int upperbound_int = 0;
+    if(dEdx_vec[0] > fdEdxCut){++upperbound_int;}
+    if(dEdx_vec[1] > fdEdxCut){++upperbound_int;}
+    if(dEdx_vec[2] > fdEdxCut){++upperbound_int;}
+    if(upperbound_int > 1){upperbound = true;}
+    
+
+    dEdx_val.push_back(dEdx_vec[0]);
+    dEdx_val.push_back(dEdx_vec[1]);
+    dEdx_val.push_back(dEdx_vec[2]);
+    
+    for(unsigned int dEdx_iter=2; dEdx_iter<dEdx_vec.size(); ++dEdx_iter){  
+      
+      //The Function of dEdx as a function of E is flat above ~10 MeV.
+      //We are looking for a jump up (or down) above the ladau width in the dEx 
+      //to account account for pair production. 
+      //Dom Estimates that the somwhere above 0.28 MeV will be a good cut but 999 will prevent this stage.
+      double dEdx = dEdx_vec[dEdx_iter];
+
+      //We are really poo at physics and so attempt to find the pair production
+      if(upperbound){
+	if(dEdx > fdEdxCut){
 	  dEdx_val.push_back(dEdx);
-	  continue;
-	}
-	
-	//We are really poo at physics and so attempt to find the pair production
-	if(TMath::Abs(dEdx_val.back() - dEdx) < fdEdxCut){
-	  dEdx_val.push_back(dEdx);
+	  std::cout << "Adding dEdx: "<< dEdx<< std::endl;
 	  continue;
 	}
 	else{
 	  //Maybe its a landau fluctation lets try again.
-	  if(dEdx_iter<dEdx_vec.size()-1){
-	    if(TMath::Abs(dEdx_val.back() - dEdx_vec[dEdx_iter+1]) < fdEdxCut){
+	  if(dEdx_iter < dEdx_vec.size()-1){
+	    if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
+	      std::cout << "Next dEdx hit is good removing hit"<< dEdx<< std::endl;
 	      continue;
 	    }
 	  }
 	  //I'll let one more value 
 	  if(dEdx_iter<dEdx_vec.size()-2){
-	    if(TMath::Abs(dEdx_val.back() - dEdx_vec[dEdx_iter+2]) < fdEdxCut){
+	    if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
+	      std::cout << "Next Next dEdx hit is good removing hit"<< dEdx<< std::endl;
 	      continue;
 	    }
 	  }
+	  //We are hopefully we have one of our electrons has died.
+	  break;
 	}
-	
-	if(dEdx_iter == 1){
-	  dEdx_val.pop_back();
+      }
+      else{
+	if(dEdx < fdEdxCut){
 	  dEdx_val.push_back(dEdx);
+	  std::cout << "Adding dEdx: "<< dEdx<< std::endl;
+	  continue;
 	}
-
-	//We are hopefully in the the pair production zone. 
-	std::cout << "we made it to the end" << std::endl;
-	break;
-	
+	else{
+	  //Maybe its a landau fluctation lets try again.
+	  if(dEdx_iter < dEdx_vec.size()-1){
+	    if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
+	      std::cout << "Next dEdx hit is good removing hit "<< dEdx<< std::endl;
+	      continue;
+	    }
+	  }
+	  //I'll let one more value 
+	  if(dEdx_iter < dEdx_vec.size()-2){
+	    if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
+	      std::cout << "Next Next dEdx hit is good removing hit "<< dEdx<< std::endl;
+	      continue;
+	    }
+	  }
+	  //We are hopefully in the the pair production zone. 
+	  break;
+	}
+      }
     }
+    return;
   }
   
 }

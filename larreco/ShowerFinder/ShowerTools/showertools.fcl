@@ -312,9 +312,9 @@ tool_type: ShowerSlidingStandardCalodEdx
 #direction for the spacepoint to be used. in radians
 #Default means the cut has no effect.
              ShapingTime:           999  #Defualt means the cut has no effect. in microseconds.
-             dEdxTrackLength:       999  #Max Distance a spacepoint can be away
+             dEdxTrackLength:       3  #Max Distance a spacepoint can be away
 #from the start of the track. in seconds
-             dEdxCut:                1.
+             dEdxCut:               999.
              CutStartPosition:     false #Remove hits using MinDistCutOff from the vertex as well
              UseMedian:            true  #Use the median dEdx rather the mean.
              ScaleWithEnergy:      false #Vary the parameters as function of E
@@ -362,6 +362,20 @@ showerpcapropergationstartposition:{
     ShowerCentreInputLabel: "ShowerCentre"
     ShowerDirectionInputLabel: "ShowerDirection"
     ShowerStartPositionInputLabel: "ShowerStartPosition" 
+}
+
+showerbayeslikelihooddedxcutting:{
+    tool_type: ShowerBayesLikelihooddEdxCutting
+    BaseTools: @local::showerbasetools
+    dEdxInputLabel: "dEdxVec"
+    NumSeedHits: 3
+    ProbDiff: 0.01
+    ProbDiffSeed: 0.01
+    nSkipHits: 2
+    ShowerdEdxOuputLabel: "ShowerdEdx"
+    PriorFname: "dEdx_plots.root"
+    PriorElectronHistoName: "electron_dedx"
+    PriorPhotonHistoName: "photon_dedx"
 }
 
 END_PROLOG

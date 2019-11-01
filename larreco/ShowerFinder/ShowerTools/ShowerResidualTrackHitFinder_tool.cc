@@ -200,6 +200,8 @@ namespace ShowerRecoTools {
       
       }
 
+    std::cout << "MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual: " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl;
+
       
     //This is all based on the shower vertex being known. If it is not lets not do the track
     if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
@@ -336,6 +338,7 @@ namespace ShowerRecoTools {
     if (fRunTest) RunTestOfIncrementalSpacePointFinder(fmh);
 
     //Actually runt he algorithm.
+    std::cout << "test1 " << std::endl;
     std::vector<art::Ptr<recob::SpacePoint> > track_sps = RunIncrementalSpacePointFinder(spacePoints, fmh);
 
     // Get the hits associated to the space points and seperate them by planes
@@ -507,7 +510,6 @@ namespace ShowerRecoTools {
 	track_segment_copy = track_segment;
 	
       }
-      
 
       //A sleight of hand coming up.  We are going to move the last sp from the segment back into the pool so 
       //that it makes kick starting the recursion easier (sneaky)

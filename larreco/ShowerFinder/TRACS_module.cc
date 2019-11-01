@@ -222,7 +222,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     selement_holder.SetShowerNumber(shower_iter);
 
     //loop only over showers.
-    if(pfp->PdgCode() != 11){continue;}
+    if(pfp->PdgCode() != 11 && pfp->PdgCode() != 22){continue;}
 
     //Calculate the shower properties 
     //Loop over the shower tools
