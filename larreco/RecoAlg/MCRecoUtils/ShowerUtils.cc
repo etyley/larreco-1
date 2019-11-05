@@ -165,3 +165,130 @@ std::map<geo::PlaneID,int> ShowerUtils::NumberofWiresHitByShower(std::vector<int
   }
   return HitWirePlaneMap;
 }
+
+
+std::map<int,std::vector<int> > ShowerUtils::GetShowerMothersCandidates(std::map<int,const simb::MCParticle*>& trueParticles){
+
+  std::map<int,std::vector<int> > ShowerMotherCandidates;
+
+  for(auto const& particle_iter: trueParticles){
+
+    const simb::MCParticle* particle = particle_iter.second;
+    
+    //Check we are are shower particle.
+    if(particle->PdgCode() != 11 && particle->PdgCode() != 22){continue;}
+
+    //Check the mother is not a shower particle 
+    if(trueParticles.find(particle->Mother()) != trueParticles.end()){
+      if(trueParticles[particle->Mother()]->PdgCode() == 11
+	 || trueParticles[particle->Mother()]->PdgCode() == 22){
+
+	//I propose that a daughter id always come and after a mother id the daughter can be added here and be in order. 
+	int mother_id = particle->Mother(); 
+	int particle_temp = mother_id;
+	//Match particle with mother
+	while(mother_id != 0){
+	  particle_temp = trueParticles[mother_id]->Mother();
+	  if(trueParticles.find(particle_temp) == trueParticles.end()){break;}
+	  if(trueParticles[particle_temp]->PdgCode() != 11
+	     && trueParticles[particle_temp]->PdgCode() != 22){break;}
+	  mother_id = particle_temp;
+	}
+	
+	//Add to the mother chain.
+	ShowerMotherCandidates[particle->TrackId()].push_back(particle->TrackId());
+
+	continue;
+
+      }
+    }
+    ShowerMotherCandidates[particle->TrackId()].push_back(particle->TrackId());
+  }
+
+ 
+  
+  return ShowerMotherCandidates;
+
+}
+
+void ShowerUtils::CutShowerMothersByE(std::map<int,std::vector<int> >& ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles, float& EnergyCut){
+
+  //Time to cut the true showers and make sure they are a shower.
+  for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end();){
+
+    //I've read that pair production starts to dominate at around ~100 MeV so to find how many showers we expect loop over the mother particle. Pi0=143.97 MeV min gammas = 71.985 MeV which is greater than that from electrons at ~100MeV so pi0 should always shower? So cut on anything below 100MeV in energy.
+
+    //It ain't a shower I'm interested in if it didn't start with a pi0 or electron...probably.
+    const simb::MCParticle *motherparticle = trueParticles[showermother->first];
+
+    if(motherparticle->E() < EnergyCut){
+      ShowersMothers.erase(showermother++); 
+    }
+    else{
+      ++showermother;
+    }
+  }
+  return;
+}
+
+void ShowerUtils::CutShowerMothersByDensity(std::map<int,std::vector<int> >& ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles,std::vector<art::Ptr<recob::Hit> >& hits, float& fDensityCut){
+
+  //Time to cut the true showers and make sure they are a shower.
+  for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end();){
+    
+    //using the RecoUtil function calculate the number of hits that see a charge deposition from the track.
+    std::map<geo::PlaneID,int> Hit_num_map = RecoUtils::NumberofHitsThatContainEnergyDepositedByTracks(showermother->second, hits);
+
+    //Calculaute the number of wires hit.
+    std::map<geo::PlaneID,int> Wire_num_map = ShowerUtils::NumberofWiresHitByShower(showermother->second, hits);
+
+    int high_density_plane=0;
+
+    //Compare hit density on each plane;
+    for(std::map<geo::PlaneID,int>::iterator Hitnum_iter=Hit_num_map.begin(); Hitnum_iter!=Hit_num_map.end(); ++Hitnum_iter){
+
+      if(Wire_num_map[Hitnum_iter->first] == 0){continue;}
+      double Hit_num = (Hitnum_iter->second);
+      double Wire_num = Wire_num_map[Hitnum_iter->first];
+      double Hit_Density = Hit_num/Wire_num;
+
+      if(Hit_Density > fDensityCut){
+	++high_density_plane;
+	break;
+      }
+    }
+
+    //If none of the planes have a density high than the cut remove the event.
+    if(high_density_plane == 0){
+      ShowersMothers.erase(showermother++); 
+    }
+    else{
+      ++showermother;
+    }
+  }
+  return; 
+}
+
+void ShowerUtils::RemoveNoneContainedParticles(std::map<int,std::vector<int> >&  ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles, std::map<int,float>& MCTrack_Energy_map){
+
+  //Calculate the deposited and the true energy in the tpc by the particle chain.
+  for(std::map<int,std::vector<int> >::iterator ShowerMother=ShowersMothers.begin(); ShowerMother!=ShowersMothers.end();){
+
+    //Loop over the daughters
+    float depsited_energy = 0;
+    float sim_energy      = 0;
+    for(auto const& Daughter: ShowerMother->second){
+      depsited_energy += MCTrack_Energy_map[Daughter];
+      sim_energy      += (trueParticles[Daughter]->E()*1000);
+    }
+
+    //If over 90% of the shower energy is seen on the wires in truth. It is contained. 
+    if(depsited_energy/sim_energy < 0.9){
+      ShowersMothers.erase(ShowerMother++);
+    }
+    else{
+      ++ShowerMother;
+    }
+  }
+  return;
+}  

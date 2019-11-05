@@ -126,6 +126,9 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     bool  fRemoveNonContainedParticles;
     bool  fPFPValidation;
     bool  fUseNeutrinoShowers;
+    bool  fClusterValidation;
+    bool  fHitValidation;
+    bool  fMatchShowersInTruth;
     int   fVerbose;
     int   fMinHitSize;
     float fSimEnergyCut;
@@ -254,7 +257,10 @@ ana::ShowerValidation::ShowerValidation(const fhicl::ParameterSet& pset) : EDAna
   fFillOnlyClosestShower       = pset.get<bool>("FillOnlyClosestShower");
   fRemoveNonContainedParticles = pset.get<bool>("RemoveNonContainedParticles");
   fPFPValidation               = pset.get<bool>("PFPValidation");
+  fClusterValidation           = pset.get<bool>("ClusterValidation");
+  fHitValidation               = pset.get<bool>("HitValidation");
   fUseNeutrinoShowers          = pset.get<bool>("UseNeutrinoShowers");
+  fMatchShowersInTruth         = pset.get<bool>("MatchShowersInTruth");
   fVerbose                     = pset.get<int>("Verbose");
   fMinHitSize                  = pset.get<int>("MinHitSize");
   fSimEnergyCut                = pset.get<float>("SimEnergyCut");
@@ -411,26 +417,26 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
   art::Handle< std::vector<simb::MCTruth> > mctruthListHandle;
   std::vector<art::Ptr<simb::MCTruth> > mclist;
   if(evt.getByLabel(fGenieGenModuleLabel,mctruthListHandle))
-  {art::fill_ptr_vector(mclist, mctruthListHandle);}
+    {art::fill_ptr_vector(mclist, mctruthListHandle);}
 
   //Getting the SimWire Information
   //Get the SimChannels so that we can find the IDEs deposited on them.
   art::Handle<std::vector<sim::SimChannel> > simChannelHandle;
   std::vector<art::Ptr<sim::SimChannel> > simchannels;
   if(evt.getByLabel(fLArGeantModuleLabel,simChannelHandle))
-  {art::fill_ptr_vector(simchannels, simChannelHandle);}
+    {art::fill_ptr_vector(simchannels, simChannelHandle);}
 
   //Getting the Hit Information
   art::Handle<std::vector<recob::Hit> > hitListHandle;
   std::vector<art::Ptr<recob::Hit> > hits;
   if(evt.getByLabel(fHitsModuleLabel,hitListHandle))
-  {art::fill_ptr_vector(hits, hitListHandle);}
+    {art::fill_ptr_vector(hits, hitListHandle);}
 
   //Get the track Information (hopfully you have pandora track)
   art::Handle<std::vector<recob::Track> > trackListHandle;
   std::vector<art::Ptr<recob::Track> > tracks;
   if(evt.getByLabel(fTrackModuleLabel,trackListHandle))
-  {art::fill_ptr_vector(tracks, trackListHandle);}
+    {art::fill_ptr_vector(tracks, trackListHandle);}
 
   //I think that doing getManyByType kind of initalises the handles giving every particle product id. Doing this allows us to find handles for the individal hits later.
 
@@ -456,319 +462,170 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
   //Loop over the particles
   std::map<int,const simb::MCParticle*> trueParticles;
-  std::map<int,const simb::MCParticle*> trueInitialParticles;
   std::map<int,bool> mcparticlescontained;
   std::map<int,float> trueParticleEnergy;
   std::map<int,std::vector<int> > ShowersMothers; //Mothers are the key Daughters are in the vector.
+  std::map<int,float> MCTrack_Energy_map;
+  std::map<art::ProductID,std::map<int,std::map<geo::PlaneID, int> > > MCTrack_hit_map;
 
   int num_of_showers =0;
-  int num_of_showers_viaEcut = 0;
-  int num_of_showers_viaDensitycut = 0;
+
   std::vector<int> E_of_showers;
   std::vector<int> E_of_showers_viaEcut;
   std::vector<int> E_of_showers_viaDensitycut;
   float simenergy=-99999999;
 
-  std::map<int,std::map<geo::PlaneID,int> > MCWires_Track_Map = RecoUtils::NumberofMCWiresHitMap(simchannels);
+  if(fMatchShowersInTruth){
 
-  //Make a map of Track id and pdgcode
-  for (sim::ParticleList::const_iterator particleIt = particles.begin(); particleIt != particles.end(); ++particleIt){
-    const simb::MCParticle *particle = particleIt->second;
-    trueParticleEnergy[particle->TrackId()] = 0;
-    trueParticles[particle->TrackId()] = particle;
-  }
+    //Get the number of wires each track hit.
+    std::map<int,std::map<geo::PlaneID,int> > MCWires_Track_Map = RecoUtils::NumberofMCWiresHitMap(simchannels);
 
-  for (sim::ParticleList::const_iterator particleIt = particles.begin(); particleIt != particles.end(); ++particleIt){
-    const simb::MCParticle *particle = particleIt->second;
+    //Get the MC Energy deposited for each MC track.
+    MCTrack_Energy_map = RecoUtils::TrueEnergyDepositedFromMCTracks(simchannels);
 
-    bool contained = true;
+    //Make a map of Track id and pdgcode
+    for (sim::ParticleList::const_iterator particleIt = particles.begin(); particleIt != particles.end(); ++particleIt){
+      const simb::MCParticle *particle = particleIt->second;
+      trueParticleEnergy[particle->TrackId()] = 0;
+      trueParticles[particle->TrackId()] = particle;
 
-    //Particles with mother 0 are the initial particles (neutrino events this is the particles generated after the interaction. Keep note of these.
-    simenergy = particle->E();
-    trueInitialParticles[particle->TrackId()] = particle;
-
-    //Check to see if the particle is contained and find the trajectory of the particle
-    //Get the number of Traj points to loop over
-    unsigned int TrajPoints = particle->NumberTrajectoryPoints();
-
-    //Get the startpoistion so we can get the initial tpc.
-    const TLorentzVector StartPositionTrajP = particle->Position(0);
-    double start_vtx[3] = {StartPositionTrajP.X() ,StartPositionTrajP.Y(), StartPositionTrajP.Z()};
-    geo::TPCID init_idtpc = geom->FindTPCAtPosition(start_vtx);
-
-    //Loop over the trajectory points (they are in order). Loop to find the start point.
-    for(unsigned int TrajPoints_it=0; TrajPoints_it<TrajPoints; ++TrajPoints_it){
-
-      //Find the vertex of the vector
-      const TLorentzVector PositionTrajP = particle->Position(TrajPoints_it);
-      double vtx[3] = {PositionTrajP.X() ,PositionTrajP.Y(), PositionTrajP.Z()};
-
-      //Find if the vertex is in the TPC. If so make it the start point.
-      geo::TPCID idtpc = geom->FindTPCAtPosition(vtx);
-
-      //Remove because this is crap and we need to think of something better.
-      if(idtpc != init_idtpc){std::cout <<"Particle outside the TPC" << std::endl; contained=false; break;}
-    }
-
-    if(contained){mcparticlescontained[particle->TrackId()] = true;}
-    else{mcparticlescontained[particle->TrackId()] = false;}
-
-    if(fVerbose > 1){std::cout << "True Particle with track ID: " << particle->TrackId() << " Has code of: " << particle->PdgCode() << " and Energy of: " << particle->E() << " With Mother: " << particle->Mother() << " Proccess: " << particle->Process() << " End Process: "  << particle->EndProcess() << std::endl;}
-
-
-    //Find The electron or photon mother of the shower.
-    const simb::MCParticle * particle_temp = particle;
-    int ShowerMotherID = particle_temp->TrackId();
-
-    if(particle_temp->Mother() != 0){
-      if(trueParticles.find(ShowerMotherID) == trueParticles.end() || trueParticles.find(particle_temp->Mother()) == trueParticles.end()){continue;}
-
-
-      while(particle_temp->Mother() != 0 && (TMath::Abs(trueParticles[particle_temp->Mother()]->PdgCode()) == 11 || trueParticles[particle_temp->Mother()]->PdgCode() == 22)){
-
-        ShowerMotherID = particle_temp->Mother();
-
-        particle_temp =  trueParticles[particle_temp->Mother()];
-
-        if(trueParticles.find(particle_temp->Mother()) == trueParticles.end()){break;}
-      }
+      if(fVerbose > 1){std::cout << "True Particle with track ID: " << particle->TrackId() << " Has code of: " << particle->PdgCode() << " and Energy of: " << particle->E() << " With Mother: " << particle->Mother() << " Proccess: " << particle->Process() << " End Process: "  << particle->EndProcess() << std::endl;}
 
     }
 
-    if(ShowersMothers.find(ShowerMotherID) == ShowersMothers.end() && (TMath::Abs(trueParticles[ShowerMotherID]->PdgCode()) == 11 || trueParticles[ShowerMotherID]->PdgCode() == 22)){ShowersMothers[ShowerMotherID].push_back(ShowerMotherID);}
-  }
+    //Get the shower mothers. The key of the map is the mother and the vector is the daughter chain. 
+    ShowersMothers = ShowerUtils::GetShowerMothersCandidates(trueParticles);
 
-  std::map<int,int> Daughters_used;
+    //Cut on the shower mothers with energy. 
+    ShowerUtils::CutShowerMothersByE(ShowersMothers, trueParticles, fSimEnergyCut);
 
-  //Find the all the daughter particles associated with the mothers
-  for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end(); ++showermother){
-
-    ++numshowers;
-
-    int Gen_Num = 0;
-    int Daughter_id = showermother->first;
-    while(Gen_Num!=0 || Daughters_used[showermother->first] != trueParticles[showermother->first]->NumberDaughters()){
-
-      if(Daughters_used[Daughter_id] == trueParticles[Daughter_id]->NumberDaughters() || (trueParticles[Daughter_id]->PdgCode() != 22 && TMath::Abs(trueParticles[Daughter_id]->PdgCode()) != 11 )){
-        if(trueParticles.find(Daughter_id) == trueParticles.end()){continue;}
-        (showermother->second).push_back(Daughter_id);
-        Daughter_id = trueParticles[Daughter_id]->Mother();
-        --Gen_Num;
-        ++Daughters_used[Daughter_id];
-        continue;
-      }
-
-      //Sometimes the duaghter is not in the particle list and so breaks the code. I presume its because its too small in energy to propergate by the simulation.
-      if(trueParticles.find(trueParticles[Daughter_id]->Daughter(Daughters_used[Daughter_id])) != trueParticles.end()){
-        Daughter_id = trueParticles[Daughter_id]->Daughter(Daughters_used[Daughter_id]);
-        ++Gen_Num;
-      }
-      else {
-        ++Daughters_used[Daughter_id];
-      }
+    //Cut on shower mothers with density 
+    ShowerUtils::CutShowerMothersByDensity(ShowersMothers, trueParticles, hits, fDensityCut);
+    
+    if(fRemoveNonContainedParticles){
+      ShowerUtils::RemoveNoneContainedParticles(ShowersMothers,trueParticles,MCTrack_Energy_map);
     }
-  }
 
-
-  if(fVerbose > 1){
-    for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end(); ++showermother){
-      const simb::MCParticle *motherparticle = trueParticles[showermother->first]; //test
-      std::cout << " A Mother has track id: " << showermother->first << " with Energy: "<< motherparticle->E() << std::endl;
-      for(std::vector<int>::iterator daughterID=(showermother->second).begin(); daughterID!=(showermother->second).end();++daughterID){
-        std::cout << " Has a daughter of id: " << *daughterID << std::endl;
-      }
+    //If there are no true showers we can't validate
+    if(ShowersMothers.size() == 0){
+      if(fVerbose > 0){std::cout << " No Mothers finishing" << std::endl;}
+      return;
     }
-  }
 
-  //Time to cut the true showers and make sure they are a shower.
-  for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end();){
-
-    //I've read that pair production starts to dominate at around ~100 MeV so to find how many showers we expect loop over the mother particle. Pi0=143.97 MeV min gammas = 71.985 MeV which is greater than that from electrons at ~100MeV so pi0 should always shower? So cut on anything below 100MeV in energy.
-
-    //It ain't a shower I'm interested in if it didn't start with a pi0 or electron...probably.
-    const simb::MCParticle *motherparticle = trueParticles[showermother->first];
-    int pdgcode = motherparticle->PdgCode();
-    if(TMath::Abs(pdgcode) == 11 || pdgcode == 22){
-      ++num_of_showers;
-      E_of_showers.push_back(motherparticle->E());
-      if(motherparticle->E() > fSimEnergyCut){
-        ++num_of_showers_viaEcut;
-        ++numshoowerspassenergy;
-
-        E_of_showers_viaEcut.push_back(motherparticle->E());
-
-        //using the RecoUtil function calculate the number of hits that see a charge deposition from the track.
-        std::map<geo::PlaneID,int> Hit_num_map = RecoUtils::NumberofHitsThatContainEnergyDepositedByTracks(showermother->second, hits);
-
-        //Calculaute the number of wires hit.
-        std::map<geo::PlaneID,int> Wire_num_map = ShowerUtils::NumberofWiresHitByShower(showermother->second, hits);
-
-        int low_density=0;
-
-        //Compare hit density on the collection plane;
-        for(std::map<geo::PlaneID,int>::iterator Hitnum_iter=Hit_num_map.begin(); Hitnum_iter!=Hit_num_map.end(); ++Hitnum_iter){
-          if(Wire_num_map[Hitnum_iter->first] == 0){continue;}
-          double Hit_num = (Hitnum_iter->second);
-          double Wire_num = Wire_num_map[Hitnum_iter->first];
-          double Hit_Density = Hit_num/Wire_num;
-          //check with dom
-          if(Hit_Density > fDensityCut){
-            ++num_of_showers_viaDensitycut;
-            ++numshowerspassdensity;
-            E_of_showers_viaDensitycut.push_back(motherparticle->E());
-
-            ++low_density;
-            break;
-          }
-        }
-
-        //If we don't have a density bigger than one in at least one plane then it aint a shower. This could be due to hit reco.
-        if(low_density == 0){
-          if(fVerbose > 0){std::cout << "Mother removed with id: " << showermother->first << " becuase the density is too low in the hit reconstruction" << std::endl;}
-          showermother = ShowersMothers.erase(showermother);
-          continue;
-        }
-
-        //Should we remove shower mothers if the  they are not contained in one TPC and one TPC only
-        if(fRemoveNonContainedParticles){
-          bool showercontained = true;
-          for(std::vector<int>::iterator showerdaughter=(showermother->second).begin(); showerdaughter!=(showermother->second).end(); ++showerdaughter){
-            showercontained = showercontained && mcparticlescontained[*showerdaughter];
-          }
-          if(!showercontained){
-            if(fVerbose > 0){std::cout << "Mother removed with id: " << showermother->first << " becuase it was not contained" << std::endl;}
-            showermother = ShowersMothers.erase(showermother);
-            ++containmentCutNum;
-            std::cout<<motherparticle->E()<<std::endl;
-            std::cout<<"Event Killed by containment cut"<<std::endl;
-            return; // Comment this out if you only want to remove showers which are not contained, this removes whole events
-            continue;
-          }
-        }
-
-        ++numshowerspassTPC;
-        ++showermother;
-      }
-      else {
-        if(fVerbose > 0){std::cout << "Mother removed with id: " << showermother->first << " becuase the true energy is too low" << std::endl;}
-        showermother = ShowersMothers.erase(showermother);
-        continue;
-      }
-    }
-    else {
-      if(fVerbose > 0){std::cout << "Mother removed with id: " << showermother->first << " becuase it is not a electron or photon" << std::endl;}
-      showermother = ShowersMothers.erase(showermother);
-    }
-  }
-
-
-  //If there are no true showers we can't validate
-  if(ShowersMothers.size() == 0){
-    if(fVerbose > 0){std::cout << " No Mothers finishing" << std::endl;}
-    return;
-  }
-
-  //If we are looking at a pion then fill the smallest and largest showers
-  for (sim::ParticleList::const_iterator particleIt = particles.begin(); particleIt != particles.end(); ++particleIt){
-
-    const simb::MCParticle *particle = particleIt->second;
-
-    float SmallestShowerE_Before = 999;
-    float BiggestShowerE_Before  = -999;
-    float SmallestShowerE_After = 999;
-    float BiggestShowerE_After  = -999;
-
-    if(particle->PdgCode() == 111){
-
-      int NumDaughters = particle->NumberDaughters();
-      for(int daughter=0; daughter<NumDaughters; ++daughter){
-
-        //Get the daughter track ID
-        int DaughterID = particle->Daughter(daughter);
-
-        //Get the largest and smallest energies before the cuts
-        if(trueParticles[DaughterID]->E() < SmallestShowerE_Before){SmallestShowerE_Before= trueParticles[DaughterID]->E();}
-        if(trueParticles[DaughterID]->E() > BiggestShowerE_Before) {BiggestShowerE_Before = trueParticles[DaughterID]->E();}
-
-        //Get the largest and smallest energies after the cuts
-        if(ShowersMothers.find(DaughterID) != ShowersMothers.end()){
-          if(trueParticles[DaughterID]->E() < SmallestShowerE_After){SmallestShowerE_After = trueParticles[DaughterID]->E();}
-          if(trueParticles[DaughterID]->E() > BiggestShowerE_After) {BiggestShowerE_After  = trueParticles[DaughterID]->E();}
-        }
+    if(fVerbose > 1){
+      for(std::map<int,std::vector<int> >::iterator showermother=ShowersMothers.begin(); showermother!=ShowersMothers.end(); ++showermother){
+	const simb::MCParticle *motherparticle = trueParticles[showermother->first]; //test
+	std::cout << " A Mother has track id: " << showermother->first << " with Energy: "<< motherparticle->E() << std::endl;
+	for(std::vector<int>::iterator daughterID=(showermother->second).begin(); daughterID!=(showermother->second).end();++daughterID){
+	  std::cout << " Has a daughter of id: " << *daughterID << std::endl;
+	}
       }
     }
 
-    if(particle->PdgCode() == 11 && particle->TrackId() == 0){
-      SmallestShowerE_Before  = particle->E();
-      BiggestShowerE_Before = particle->E();
-      SmallestShowerE_After = particle->E();
-      BiggestShowerE_After  = particle->E();
+    num_of_showers = (int) ShowersMothers.size();
+    numshowers += num_of_showers;
+
+    //If we are looking at a pion then fill the smallest and largest showers
+    for (sim::ParticleList::const_iterator particleIt = particles.begin(); particleIt != particles.end(); ++particleIt){
+
+      const simb::MCParticle *particle = particleIt->second;
+
+      float SmallestShowerE_Before = 999;
+      float BiggestShowerE_Before  = -999;
+      float SmallestShowerE_After = 999;
+      float BiggestShowerE_After  = -999;
+
+      if(particle->PdgCode() == 111){
+
+	int NumDaughters = particle->NumberDaughters();
+	for(int daughter=0; daughter<NumDaughters; ++daughter){
+
+	  //Get the daughter track ID
+	  int DaughterID = particle->Daughter(daughter);
+
+	  //Get the largest and smallest energies before the cuts
+	  if(trueParticles[DaughterID]->E() < SmallestShowerE_Before){SmallestShowerE_Before= trueParticles[DaughterID]->E();}
+	  if(trueParticles[DaughterID]->E() > BiggestShowerE_Before) {BiggestShowerE_Before = trueParticles[DaughterID]->E();}
+
+	  //Get the largest and smallest energies after the cuts
+	  if(ShowersMothers.find(DaughterID) != ShowersMothers.end()){
+	    if(trueParticles[DaughterID]->E() < SmallestShowerE_After){SmallestShowerE_After = trueParticles[DaughterID]->E();}
+	    if(trueParticles[DaughterID]->E() > BiggestShowerE_After) {BiggestShowerE_After  = trueParticles[DaughterID]->E();}
+	  }
+	}
+      }
+
+      if(particle->PdgCode() == 11 && particle->TrackId() == 0){
+	SmallestShowerE_Before  = particle->E();
+	BiggestShowerE_Before = particle->E();
+	SmallestShowerE_After = particle->E();
+	BiggestShowerE_After  = particle->E();
+      }
+
     }
+  
+    //Get the number of hits associated wit each Track. This is done for every hits handle in the event.
+    for(auto& handle : hitHandles){
 
-  }
+      if(!handle.isValid()){
+	mf::LogError("ShowerValidation") << "Bad hit handle from the all the hit handles" << std::endl;
+	continue;
+      }
 
-  //Get the MC Energy deposited for each MC track.
-  std::map<int,float> MCTrack_Energy_map = RecoUtils::TrueEnergyDepositedFromMCTracks(simchannels);
+      //RawHitFinder is a bit silly at the moment so ignore it for the time being - REMOVE
+      if(handle.provenance()->moduleLabel() == "fasthit"){continue;}
 
-  //Get the number of hits associated wit each Track. This is done for every hits handle in the event.
-  std::map<art::ProductID,std::map<int,std::map<geo::PlaneID, int> > > MCTrack_hit_map;
-  for(auto& handle : hitHandles){
+      //Getting the Hit Information
+      art::Handle<std::vector<recob::Hit> > hitHandle;
+      std::vector<art::Ptr<recob::Hit> > hits_fromhandle;
+      if(evt.getByLabel(handle.provenance()->moduleLabel(),hitHandle))
+	{art::fill_ptr_vector(hits_fromhandle, hitHandle);}
 
-    if(!handle.isValid()){
-      mf::LogError("ShowerValidation") << "Bad hit handle from the all the hit handles" << std::endl;
-      continue;
+
+      //Get a map of the number of hits per plane each track has deposited.
+      MCTrack_hit_map[handle.id()] = RecoUtils::NumberofPlaneHitsPerTrack(hits_fromhandle);
     }
-
-    //RawHitFinder is a bit silly at the moment so ignore it for the time being - REMOVE
-    if(handle.provenance()->moduleLabel() == "fasthit"){continue;}
-
-    //Getting the Hit Information
-    art::Handle<std::vector<recob::Hit> > hitHandle;
-    std::vector<art::Ptr<recob::Hit> > hits_fromhandle;
-    if(evt.getByLabel(handle.provenance()->moduleLabel(),hitHandle))
-    {art::fill_ptr_vector(hits_fromhandle, hitHandle);}
-
-
-    //Get a map of the number of hits per plane each track has deposited.
-    MCTrack_hit_map[handle.id()] = RecoUtils::NumberofPlaneHitsPerTrack(hits_fromhandle);
   }
 
   //######################
   //### Hit Validation ###
   //######################
 
-  //Loop over the hit handles
-  for(unsigned int hitlab_it=0; hitlab_it<fHitModuleLabels.size(); ++hitlab_it){
+  if(fHitValidation){
 
-    //Getting the Hit Information
-    art::Handle<std::vector<recob::Shower> > hitValHandle;
-    std::vector<art::Ptr<recob::Shower> > hits_fromValhandle;
-    std::string fHitModuleLabel = fHitModuleLabels[hitlab_it];
-    if(evt.getByLabel(fHitModuleLabel,hitValHandle))
-    {art::fill_ptr_vector(hits_fromValhandle,hitValHandle);}
+    //Loop over the hit handles
+    for(unsigned int hitlab_it=0; hitlab_it<fHitModuleLabels.size(); ++hitlab_it){
 
-    //Calculate the total energy deposited
-    float TotalEnergyDeposited = 0;
-    for(auto track_iter: MCTrack_Energy_map){
-      TotalEnergyDeposited += track_iter.second;
+      //Getting the Hit Information
+      art::Handle<std::vector<recob::Shower> > hitValHandle;
+      std::vector<art::Ptr<recob::Shower> > hits_fromValhandle;
+      std::string fHitModuleLabel = fHitModuleLabels[hitlab_it];
+      if(evt.getByLabel(fHitModuleLabel,hitValHandle))
+	{art::fill_ptr_vector(hits_fromValhandle,hitValHandle);}
+
+      //Calculate the total energy deposited
+      float TotalEnergyDeposited = 0;
+      for(auto track_iter: MCTrack_Energy_map){
+	TotalEnergyDeposited += track_iter.second;
+      }
+
+      //Calculate how much energy was deposited in the hits
+      for(geo::PlaneID plane_id: geom->IteratePlaneIDs()){
+
+	float TotalEnergyDepinHits = RecoUtils::TotalEnergyDepinHits(hits,plane_id.Plane);
+	if(TotalEnergyDepinHits != 0){
+	  hEnergyComp_TreeVal[fHitModuleLabel][plane_id.Plane].push_back((TotalEnergyDepinHits)/TotalEnergyDeposited);
+	  if(fVerbose > 1){std::cout << "Hit Completeness:"  << (TotalEnergyDepinHits)/TotalEnergyDeposited << std::endl;}
+	}
+	else{
+	  hEnergyComp_TreeVal[fHitModuleLabel][plane_id.Plane].push_back(-99999);
+	}
+      }
     }
 
-    //Calculate how much energy was deposited in the hits
-    for(geo::PlaneID plane_id: geom->IteratePlaneIDs()){
 
-      float TotalEnergyDepinHits = RecoUtils::TotalEnergyDepinHits(hits,plane_id.Plane);
-      if(TotalEnergyDepinHits != 0){
-        hEnergyComp_TreeVal[fHitModuleLabel][plane_id.Plane].push_back((TotalEnergyDepinHits)/TotalEnergyDeposited);
-        if(fVerbose > 1){std::cout << "Hit Completeness:"  << (TotalEnergyDepinHits)/TotalEnergyDeposited << std::endl;}
-      }
-      else{
-        hEnergyComp_TreeVal[fHitModuleLabel][plane_id.Plane].push_back(-99999);
-      }
-    }
+    if(fVerbose > 1){std::cout << "Hit Validation Complete" << std::endl;}
   }
-
-
-  if(fVerbose > 1){std::cout << "Hit Validation Complete" << std::endl;}
 
   //##############################################
   //Get the reconstructed info and Match with MC #
@@ -776,7 +633,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
   for(unsigned int shwrlab_it=0; shwrlab_it<fShowerModuleLabels.size(); ++shwrlab_it){
 
-    if(ShowersMothers.size() == 0){
+    if(ShowersMothers.size() == 0 && fMatchShowersInTruth){
       if(fVerbose > 0){std::cout << "No Mothers to Match to the showers" << std::endl;}
       continue;
     }
@@ -926,7 +783,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         pfpVertex->XYZ(pfpvtx);
 
         // TODO: here i just take the first particle becuase i'm lazy, needs fixing
-        std::map<int,const simb::MCParticle*>::iterator trueInitialParticleIt = trueInitialParticles.begin();
+        std::map<int,const simb::MCParticle*>::iterator trueInitialParticleIt = trueParticles.begin();
         const simb::MCParticle* initialParticle = (*trueInitialParticleIt).second;
 
 
@@ -1007,7 +864,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     std::map<int, art::Ptr<recob::PFParticle> > pfpsMap;
     for (unsigned int i=0; i<pfps.size();++i){
       art::Ptr<recob::PFParticle>& pfp = pfps.at(i);
-      std::cout << "pfp: " << pfp->Self() << " pdg: " << pfp->PdgCode() << " mother: " << pfp->Parent() << std::endl;
       pfpsMap[pfp->Self()] = pfp;
     }
 
@@ -1063,7 +919,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       double TrueEnergyDepWithinShower_FromTrueShower = ShowerTrackInfo.second;
 
       //Check to see if the shower was correctly matched.
-      if(TrueEnergyDepWithinShower_FromTrueShower == -99999){
+      if(TrueEnergyDepWithinShower_FromTrueShower == -99999 && fMatchShowersInTruth){
         continue;
         std::cout << "Reco Shower not matched to true shower. Think of reducing the energy threshold" << std::endl;
       }
@@ -1112,26 +968,28 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	//Get the hits.
 	std::vector<art::Ptr<recob::Hit> > initialtrackhits  = fmith.at(initial_track[0].key());
 	
-	int initialtrack_hits_from_mother = 999;
-	int true_num_hits_initialTrack  = 999;
+	int initialtrack_hits_from_mother = 99999;
+	int true_num_hits_initialTrack  = 99999;
 
-	//Where do the hits come from
-	if(trueParticles[ShowerTrackID]->PdgCode() == 11){
-	initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
-	true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
-	}
-	else{
-	  //Get the ee+ pair daughters from the photon. 
-	  std::vector<int> Electrons;
-	  for(auto const& daughter: ShowersMothers[ShowerTrackID]){
-	    if(trueParticles[daughter]->Mother() == ShowerTrackID && TMath::Abs(trueParticles[daughter]->PdgCode()) == 11){
-	      Electrons.push_back(daughter);
-	    }
+	//Cannot do truth matching if its turned off.
+	if(fMatchShowersInTruth){
+	  //Where do the hits come from
+	  if(trueParticles[ShowerTrackID]->PdgCode() == 11){
+	    initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
+	    true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
 	  }
-	  initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,initialtrackhits);
-	  true_num_hits_initialTrack    = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,showerhits);
+	  else{
+	    //Get the ee+ pair daughters from the photon. 
+	    std::vector<int> Electrons;
+	    for(auto const& daughter: ShowersMothers[ShowerTrackID]){
+	      if(trueParticles[daughter]->Mother() == ShowerTrackID && TMath::Abs(trueParticles[daughter]->PdgCode()) == 11){
+		Electrons.push_back(daughter);
+	      }
+	    }
+	    initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,initialtrackhits);
+	    true_num_hits_initialTrack    = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,showerhits);
+	  }
 	}
-	std::cout << "initialtrack_hits_from_mother: " << initialtrack_hits_from_mother << " true_num_hits_initialTrack: " << true_num_hits_initialTrack << std::endl;
 
 	//Calculate metrics 
 	if(true_num_hits_initialTrack != 0){
@@ -1139,18 +997,17 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	  sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
 	}
 	else{ 
-	  double initial_track_completeness = -999; 
+	  double initial_track_completeness = -99999; 
 	  sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
 	}
 
 	if(initialtrackhits.size() != 0){
 	  double initial_track_purity       = (double) initialtrack_hits_from_mother/(double) initialtrackhits.size();
-	  std::cout << "purity: " << initial_track_purity << " initialtrack_hits_from_mother: " << initialtrack_hits_from_mother << " initialtrackhits.size: " << initialtrackhits.size() << std::endl;
 	  sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
 
 	}
 	else{ 
-	  double initial_track_purity = -999;
+	  double initial_track_purity = -99999;
 	  sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
 	}
 
@@ -1164,19 +1021,20 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	}
       }
       else{ 
-	double initial_track_completeness = 0; 
+	double initial_track_completeness = -99999; 
 	sTrackHitComp_TreeVal[fShowerModuleLabel].push_back(initial_track_completeness);
-	double initial_track_purity = 0;
+	double initial_track_purity = -99999;
 	sTrackHitPurity_TreeVal[fShowerModuleLabel].push_back(initial_track_purity);
       }
 
-      //Get the true track length 
-
-
+      //Shower Purity and completeness cannot be done with out truth matching 
       double TrueEnergyDep_FromShower = 0;
-      //Calculate the true Energy deposited By Shower
-      for(std::vector<int>::iterator daughterID=ShowersMothers[ShowerTrackID].begin(); daughterID!=ShowersMothers[ShowerTrackID].end(); ++daughterID){
-        TrueEnergyDep_FromShower += MCTrack_Energy_map[*daughterID];
+
+      if(fMatchShowersInTruth){
+	//Calculate the true Energy deposited By Shower
+	for(std::vector<int>::iterator daughterID=ShowersMothers[ShowerTrackID].begin(); daughterID!=ShowersMothers[ShowerTrackID].end(); ++daughterID){
+	  TrueEnergyDep_FromShower += MCTrack_Energy_map[*daughterID];
+	}
       }
 
       double hitcompleteness = 0;
@@ -1184,11 +1042,17 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         hitcompleteness = ((double) TrueHitsDep_WithinRecoShower)/(double) TrueHitDep_FromTrueShower;
         sHitsComp_TreeVal[fShowerModuleLabel].push_back(hitcompleteness);
       }
+      else{
+	sHitsComp_TreeVal[fShowerModuleLabel].push_back(-99999);
+      }
 
       double hitpurity = 0;
       if(TrueHitsDep_WithinRecoShower != 0){
         hitpurity   =   (double) TrueHitsDep_WithinRecoShower/(double) NumberofHitsinRecoShower;
         sHitsPurity_TreeVal[fShowerModuleLabel].push_back(hitpurity);
+      }
+      else{
+	sHitsPurity_TreeVal[fShowerModuleLabel].push_back(-99999);
       }
 
       //Energy deposited within the set of Hits associated to the shower.
@@ -1218,88 +1082,98 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         energycompleteness =  (TrueEnergyDepWithinShower_FromTrueShower)/TrueEnergyDep_FromShower;
         sEnergyComp_TreeVal[fShowerModuleLabel].push_back(energycompleteness);
       }
+      else{
+	sEnergyComp_TreeVal[fShowerModuleLabel].push_back(-99999);
+      }
 
       double energypurity = 0;
       if(TrueEnergyDep_WithinRecoShower != 0){
         energypurity       =  TrueEnergyDepWithinShower_FromTrueShower/TrueEnergyDep_WithinRecoShower;
         sEnergyPurity_TreeVal[fShowerModuleLabel].push_back(energypurity);
       }
+      else{
+	sEnergyPurity_TreeVal[fShowerModuleLabel].push_back(-99999);
+      }
 
       //Find the MCParticle this shower associates to
-      const simb::MCParticle* MCShowerParticle = trueParticles.at(ShowerTrackID);
+      TVector3  TrueShowerDirection = {-99999,-99999,-99999};
+      double TrueTrackLength  = -99999;
+      TLorentzVector PositionTrajStart = {-99999,-99999,-99999, -99999};
+      if(fMatchShowersInTruth){
 
-      sPDG_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->PdgCode());
-      sMother_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->Mother());
-
-
-      //Find the Energy of the particle:
-      float Energy = MCShowerParticle->E();
-      sTrueEnergy_TreeVal[fShowerModuleLabel].push_back(Energy*1000);
-
-      sStartEndProcess_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->EndProcess());
-
-      //Get the number of Traj points to loop over
-      unsigned int TrajPoints = MCShowerParticle->NumberTrajectoryPoints();
-
-      // Select first traj point where the photon loses energy, last be default
-      bool PhotonEnd = false;
-      unsigned int PhotonEndTrajPoint = TrajPoints-1;
-      for (unsigned int trajPoint=0; trajPoint<TrajPoints;trajPoint++){
-        if (!PhotonEnd && MCShowerParticle->E(trajPoint) < (0.9*Energy)){
-          PhotonEndTrajPoint = trajPoint;
-          PhotonEnd = true;
-        }
-      }
-
-
-      //Find the start and end points of the initial particle.
-      TLorentzVector PositionTrajStart =  MCShowerParticle->Position(0);
-      TLorentzVector PositionTrajEnd   =  MCShowerParticle->Position(PhotonEndTrajPoint);
-
-      //Get the track length of the initial track stub. 
-      double TrackStubLength = (PositionTrajStart-PositionTrajEnd).Vect().Mag();
-
-      //How straight are the IDE points. First Define the line.
-      TVector3 track_line = (PositionTrajStart.Vect()-PositionTrajEnd.Vect()).Unit();
-
-      double TrackStubResidual = 0;
-      double TrackStubResidual_iter = 0;
-      //Get the energy depositions
-      std::vector< const sim::IDE * > IDEs = backtracker->TrackIdToSimIDEs_Ps(ShowerTrackID);
-      for(auto const& ide: IDEs){
-	//Calculate the perpendicualr distance from the straight line 
-	if(ide->trackID == ShowerTrackID){
-	  TVector3 pos = {ide->x, ide->y,ide->z};
-	  TVector3 rel_pos = pos - PositionTrajStart.Vect();
-	  double   len  = rel_pos.Dot(track_line);
-	  if(len>TrackStubLength){continue;}
-	  double   perp = (rel_pos - len*track_line).Mag();
-	  TrackStubResidual += perp;
-	  ++TrackStubResidual_iter;
-	}
-      }
+	const simb::MCParticle* MCShowerParticle = trueParticles.at(ShowerTrackID);
+	sPDG_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->PdgCode());
+	sMother_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->Mother());
       
-      sTrueTrackLengh_TreeVal[fShowerModuleLabel].push_back(TrackStubLength); 
-      sTrueTrackSpread_TreeVal[fShowerModuleLabel].push_back(TrackStubResidual/TrackStubResidual_iter); 
-	    
-    
 
-      //The Start of position for the electron shower is PositionTrajStart but the start position for photon showers is at the end of the shower (the start of the e+- track)
-      if(MCShowerParticle->PdgCode() == 22){
-        PositionTrajStart = PositionTrajEnd;
+	//Find the Energy of the particle:
+	float Energy = MCShowerParticle->E();
+	sTrueEnergy_TreeVal[fShowerModuleLabel].push_back(Energy*1000);
+	
+	sStartEndProcess_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->EndProcess());
+	
+	//Get the number of Traj points to loop over
+	unsigned int TrajPoints = MCShowerParticle->NumberTrajectoryPoints();
+	
+	// Select first traj point where the photon loses energy, last be default
+	bool PhotonEnd = false;
+	unsigned int PhotonEndTrajPoint = TrajPoints-1;
+	for (unsigned int trajPoint=0; trajPoint<TrajPoints;trajPoint++){
+	  if (!PhotonEnd && MCShowerParticle->E(trajPoint) < (0.9*Energy)){
+	    PhotonEndTrajPoint = trajPoint;
+	    PhotonEnd = true;
+	  }
+	}
+	
+	
+	//Find the start and end points of the initial particle.
+	PositionTrajStart =  MCShowerParticle->Position(0);
+	TLorentzVector PositionTrajEnd   =  MCShowerParticle->Position(PhotonEndTrajPoint);
+	
+	//Get the track length of the initial track stub. 
+	double TrackStubLength = (PositionTrajStart-PositionTrajEnd).Vect().Mag();
+	
+	//How straight are the IDE points. First Define the line.
+	TVector3 track_line = (PositionTrajStart.Vect()-PositionTrajEnd.Vect()).Unit();
+	
+	double TrackStubResidual = 0;
+	double TrackStubResidual_iter = 0;
+	//Get the energy depositions
+	std::vector< const sim::IDE * > IDEs = backtracker->TrackIdToSimIDEs_Ps(ShowerTrackID);
+	for(auto const& ide: IDEs){
+	  //Calculate the perpendicualr distance from the straight line 
+	  if(ide->trackID == ShowerTrackID){
+	    TVector3 pos = {ide->x, ide->y,ide->z};
+	    TVector3 rel_pos = pos - PositionTrajStart.Vect();
+	    double   len  = rel_pos.Dot(track_line);
+	    if(len>TrackStubLength){continue;}
+	    double   perp = (rel_pos - len*track_line).Mag();
+	    TrackStubResidual += perp;
+	    ++TrackStubResidual_iter;
+	  }
+	}
+	
+	sTrueTrackLengh_TreeVal[fShowerModuleLabel].push_back(TrackStubLength); 
+	sTrueTrackSpread_TreeVal[fShowerModuleLabel].push_back(TrackStubResidual/TrackStubResidual_iter); 
+	
+	
+	
+	//The Start of position for the electron shower is PositionTrajStart but the start position for photon showers is at the end of the shower (the start of the e+- track)
+	if(MCShowerParticle->PdgCode() == 22){
+	  PositionTrajStart = PositionTrajEnd;
+	}
+	
+	//The three vector for track length is the shower direction
+	//TVector3  TrueShowerDirection = (PositionTrajEnd - PositionTrajStart).Vect();
+	TVector3 TrueShowerDirectionTemp(MCShowerParticle->Px(), MCShowerParticle->Py(),MCShowerParticle->Pz());
+	TrueShowerDirection =  TrueShowerDirectionTemp;
+	TrueShowerDirection = TrueShowerDirection.Unit();
+	
+	
+	//Initial track lentgh of the shower. NEEDS UPDATING
+	TrueTrackLength = TrueShowerDirection.Mag();
       }
 
-      //The three vector for track length is the shower direction
-      //TVector3  TrueShowerDirection = (PositionTrajEnd - PositionTrajStart).Vect();
-      TVector3  TrueShowerDirection(MCShowerParticle->Px(), MCShowerParticle->Py(),MCShowerParticle->Pz());
-      TrueShowerDirection = TrueShowerDirection.Unit();
-
-
-      //Initial track lentgh of the shower. NEEDS UPDATING
-      double TrueTrackLength = TrueShowerDirection.Mag();
-
-      //Remove this
-      //ShowerEnergyPlanes[2] = (ShowerEnergyPlanes[2] - 0.00155171)*0.00155171/4.39964 + 4.39964;
 
       //Bools to fill metric histrograms wheen needed.
       bool EvaluateShowerDirection       = false;
@@ -1333,29 +1207,31 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       float ShowerDirection_YTrue = -99999;
       float ShowerDirection_ZTrue = -99999;
       float ShowerDirection_diff  = -99999;
-
-      if(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.Z()*ShowerDirection.Z())) !=0){
-        ShowerDirection_Xdiff = (TrueShowerDirection.Y()*ShowerDirection.Y() + TrueShowerDirection.Z()*ShowerDirection.Z())/(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.Z()*ShowerDirection.Z())));
-        ShowerDirection_XTrue = TrueShowerDirection.X();
+      double Start_diff           = -99999;
+      if(fMatchShowersInTruth){
+	if(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.Z()*ShowerDirection.Z())) !=0){
+	  ShowerDirection_Xdiff = (TrueShowerDirection.Y()*ShowerDirection.Y() + TrueShowerDirection.Z()*ShowerDirection.Z())/(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.Z()*ShowerDirection.Z())));
+	  ShowerDirection_XTrue = TrueShowerDirection.X();
+	}
+	
+	if(TMath::Sqrt((TrueShowerDirection.X()*TrueShowerDirection.X() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.X()*ShowerDirection.X() + ShowerDirection.Z()*ShowerDirection.Z())) !=0){
+	  ShowerDirection_Ydiff = (TrueShowerDirection.X()*ShowerDirection.X() + TrueShowerDirection.Z()*ShowerDirection.Z())/(TMath::Sqrt((TrueShowerDirection.X()*TrueShowerDirection.X() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.X()*ShowerDirection.X() + ShowerDirection.Z()*ShowerDirection.Z())));
+	  ShowerDirection_YTrue = TrueShowerDirection.Y();
+	}
+	
+	if(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.X()*TrueShowerDirection.X()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.X()*ShowerDirection.X())) !=0){
+	  ShowerDirection_Zdiff = (TrueShowerDirection.Y()*ShowerDirection.Y() + TrueShowerDirection.X()*ShowerDirection.X())/(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.X()*TrueShowerDirection.X()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.X()*ShowerDirection.X())));
+	  ShowerDirection_ZTrue = TrueShowerDirection.Z();
+	}
+	
+	if(TrueShowerDirection.Mag() != 0 || ShowerDirection.Mag() !=0){
+	  ShowerDirection_diff  = TrueShowerDirection.Dot(ShowerDirection)/(TrueShowerDirection.Mag()*ShowerDirection.Mag());
+	}
+	
+	//Get the Error in the position. intialised as 0,0,0 this is a problem here.
+       Start_diff = TMath::Sqrt(TMath::Power(PositionTrajStart.X()-ShowerStart.X(),2) + TMath::Power(PositionTrajStart.Y()-ShowerStart.Y(),2) + TMath::Power(PositionTrajStart.Z()-ShowerStart.Z(),2));
       }
-
-      if(TMath::Sqrt((TrueShowerDirection.X()*TrueShowerDirection.X() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.X()*ShowerDirection.X() + ShowerDirection.Z()*ShowerDirection.Z())) !=0){
-        ShowerDirection_Ydiff = (TrueShowerDirection.X()*ShowerDirection.X() + TrueShowerDirection.Z()*ShowerDirection.Z())/(TMath::Sqrt((TrueShowerDirection.X()*TrueShowerDirection.X() + TrueShowerDirection.Z()*TrueShowerDirection.Z()))*TMath::Sqrt((ShowerDirection.X()*ShowerDirection.X() + ShowerDirection.Z()*ShowerDirection.Z())));
-        ShowerDirection_YTrue = TrueShowerDirection.Y();
-      }
-
-      if(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.X()*TrueShowerDirection.X()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.X()*ShowerDirection.X())) !=0){
-        ShowerDirection_Zdiff = (TrueShowerDirection.Y()*ShowerDirection.Y() + TrueShowerDirection.X()*ShowerDirection.X())/(TMath::Sqrt((TrueShowerDirection.Y()*TrueShowerDirection.Y() + TrueShowerDirection.X()*TrueShowerDirection.X()))*TMath::Sqrt((ShowerDirection.Y()*ShowerDirection.Y() + ShowerDirection.X()*ShowerDirection.X())));
-        ShowerDirection_ZTrue = TrueShowerDirection.Z();
-      }
-
-      if(TrueShowerDirection.Mag() != 0 || ShowerDirection.Mag() !=0){
-        ShowerDirection_diff  = TrueShowerDirection.Dot(ShowerDirection)/(TrueShowerDirection.Mag()*ShowerDirection.Mag());
-      }
-
-      //Get the Error in the position. intialised as 0,0,0 this is a problem here.
-      double Start_diff = TMath::Sqrt(TMath::Power(PositionTrajStart.X()-ShowerStart.X(),2) + TMath::Power(PositionTrajStart.Y()-ShowerStart.Y(),2) + TMath::Power(PositionTrajStart.Z()-ShowerStart.Z(),2));
-
+      
       //Fill the histograms.
       if(EvaluateShowerDirection){
         sDirX_TreeVal[fShowerModuleLabel].push_back(ShowerDirection_Xdiff);
@@ -1376,7 +1252,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         sDirDiff_TreeVal[fShowerModuleLabel].push_back(-99999);
       }
 
-      if(EvaluateShowerStart){
+      if(EvaluateShowerStart && fMatchShowersInTruth){
         sStartX_TreeVal[fShowerModuleLabel].push_back(TMath::Abs(PositionTrajStart.X()-ShowerStart.X()));
         sStartY_TreeVal[fShowerModuleLabel].push_back(TMath::Abs(PositionTrajStart.Y()-ShowerStart.Y()));
         sStartZ_TreeVal[fShowerModuleLabel].push_back(TMath::Abs(PositionTrajStart.Z()-ShowerStart.Z()));
@@ -1440,8 +1316,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         std::cout << "Number of Reco showers: " << showers.size() << std::endl;
         std::cout << "Energy Simulated: " << simenergy << std::endl;
         std::cout << "Number of True Showers Before Cuts: " <<  num_of_showers << std::endl;
-        std::cout << "Number of True Showers That pass the E cut: " <<  num_of_showers_viaEcut << std::endl;
-        std::cout << "Number of True Showers That pass the Density cut: " << num_of_showers_viaDensitycut << std::endl;
         std::cout << "Number of True Showers in the Event: " << ShowersMothers.size() << std::endl;
         std::cout << "#################################################" << std::endl;
         std::cout << "Reconstructed/Associated Truth Information" << std::endl;
@@ -1472,102 +1346,108 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       //##########################
       //### Cluster Validation ###
       //##########################
+      
+      if(fClusterValidation){
 
-      //Firstly look inf the hits in the shower match in all given planes
-      std::map<std::vector<double>, int> HitCoord_map;
-      float numclusters = -9999;
-      float geoprojectionmatched_score = -99999;
-      for(std::vector< art::Ptr<recob::Hit> >::iterator hitIt=showerhits.begin(); hitIt!=showerhits.end(); ++hitIt){
-        try{
-          const std::vector<sim::IDE> hitIDEs = backtracker->HitToAvgSimIDEs(*hitIt);
-          for(unsigned int hitIDE=0; hitIDE<hitIDEs.size(); ++hitIDE){
-            std::vector<double> hitcoord = {hitIDEs[hitIDE].x, hitIDEs[hitIDE].y, hitIDEs[hitIDE].z};
-            //std::cout << "x: " << hitIDEs[hitIDE].x << ", y: " << hitIDEs[hitIDE].y << ", z: " << hitIDEs[hitIDE].z << " plane: " << (*hitIt)->WireID().Plane << std::endl;;
-            ++HitCoord_map[hitcoord];
-          }
-        }
-        catch(...){
-          if(fVerbose>1){std::cout << "Noise Hit" << std::endl;}
-        }
+	//Firstly look inf the hits in the shower match in all given planes
+	std::map<std::vector<double>, int> HitCoord_map;
+	float numclusters = -9999;
+	float geoprojectionmatched_score = -99999;
+	for(std::vector< art::Ptr<recob::Hit> >::iterator hitIt=showerhits.begin(); hitIt!=showerhits.end(); ++hitIt){
+	  try{
+	    const std::vector<sim::IDE> hitIDEs = backtracker->HitToAvgSimIDEs(*hitIt);
+	    for(unsigned int hitIDE=0; hitIDE<hitIDEs.size(); ++hitIDE){
+	      std::vector<double> hitcoord = {hitIDEs[hitIDE].x, hitIDEs[hitIDE].y, hitIDEs[hitIDE].z};
+	      //std::cout << "x: " << hitIDEs[hitIDE].x << ", y: " << hitIDEs[hitIDE].y << ", z: " << hitIDEs[hitIDE].z << " plane: " << (*hitIt)->WireID().Plane << std::endl;;
+	      ++HitCoord_map[hitcoord];
+	    }
+	  }
+	  catch(...){
+	    if(fVerbose>1){std::cout << "Noise Hit" << std::endl;}
+	  }
+	}
+
+
+	//Get the clusters associated to the shower.Needs Work.
+	if(fmch.isValid()){
+	  art::Handle<std::vector<recob::Cluster > > clusterHandle;
+	  evt.get(fmch.at(shower.key()).front().id(),clusterHandle);
+	  if(clusterHandle.isValid()){
+	    std::vector<art::Ptr<recob::Cluster> > showerclusters = fmch.at(shower.key());
+	    ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
+
+	    //Loop over the hit coordinate map where there there is a hit on every plane give a 1.
+	    numclusters = showerclusters.size();
+	    int geoprojectionmatched = 0;
+	    for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
+	      if(coord->second == numclusters){++geoprojectionmatched;}
+	    }
+	    if(numclusters > 0){
+	      EvalulateGeoProjectionMatched = true;
+	      geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
+	    }
+	  }
+	  else{
+	    mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
+	  }
+	}
+	else if(fmpf.isValid()){
+	  //Find the Clusters associated to PF particle.
+	  art::Handle<std::vector<recob::PFParticle> > pfpHandle;
+	  evt.get(fmpf.at(shower.key()).front().id(),pfpHandle);
+	  if(pfpHandle.isValid()){
+	    art::FindManyP<recob::Cluster> fmcpf(pfpHandle, evt, pfpHandle.provenance()->moduleLabel());
+	    if(fmcpf.isValid()){
+	      art::Handle<std::vector<recob::Cluster > > clusterHandle;
+	      evt.get(fmcpf.at(0).front().id(),clusterHandle);
+	      if(clusterHandle.isValid()){
+		std::vector< art::Ptr<recob::Cluster> > showerclusters = fmcpf.at(shower.key());
+		ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
+		//Loop over the hit coordinate map where there there is a hit on every plane give a 1.
+		numclusters = showerclusters.size();
+
+		int geoprojectionmatched = 0;
+		for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
+		  if(coord->second == numclusters){++geoprojectionmatched;}
+		}
+
+		if(numclusters > 0){
+		  EvalulateGeoProjectionMatched = true;
+		  geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
+		}
+	      }
+	      else{
+		mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
+	      }
+	    }
+	    else{
+	      mf::LogError("ShowerValidation") << "No Assosoication between pf particles and clusters was found for shower made from a pf particle. No clustering validation was done." << std::endl;
+	    }
+	  }
+	  else{
+	    mf::LogError("ShowerValidation") << "pf particle handle is stale" << std::endl;
+	  }
+	}
+	else{
+	  mf::LogError("ShowerValidation") << "No cluster or pandora association" << std::endl;
+	}
+
+	if(EvalulateGeoProjectionMatched){
+
+	  sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(geoprojectionmatched_score);
+
+	}
+	else{
+	  sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(-99999);
+	}
+
+
+	if(fVerbose > 1){std::cout << "Cluster Validation Complete" << std::endl;}
+
       }
 
+	++numrecoshowersana;
 
-      //Get the clusters associated to the shower.Needs Work.
-      if(fmch.isValid()){
-        art::Handle<std::vector<recob::Cluster > > clusterHandle;
-        evt.get(fmch.at(shower.key()).front().id(),clusterHandle);
-        if(clusterHandle.isValid()){
-          std::vector<art::Ptr<recob::Cluster> > showerclusters = fmch.at(shower.key());
-          ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
-
-          //Loop over the hit coordinate map where there there is a hit on every plane give a 1.
-          numclusters = showerclusters.size();
-          int geoprojectionmatched = 0;
-          for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
-            if(coord->second == numclusters){++geoprojectionmatched;}
-          }
-          if(numclusters > 0){
-            EvalulateGeoProjectionMatched = true;
-            geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
-          }
-        }
-        else{
-          mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
-        }
-      }
-      else if(fmpf.isValid()){
-        //Find the Clusters associated to PF particle.
-        art::Handle<std::vector<recob::PFParticle> > pfpHandle;
-        evt.get(fmpf.at(shower.key()).front().id(),pfpHandle);
-        if(pfpHandle.isValid()){
-          art::FindManyP<recob::Cluster> fmcpf(pfpHandle, evt, pfpHandle.provenance()->moduleLabel());
-          if(fmcpf.isValid()){
-            art::Handle<std::vector<recob::Cluster > > clusterHandle;
-            evt.get(fmcpf.at(0).front().id(),clusterHandle);
-            if(clusterHandle.isValid()){
-              std::vector< art::Ptr<recob::Cluster> > showerclusters = fmcpf.at(shower.key());
-              ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
-              //Loop over the hit coordinate map where there there is a hit on every plane give a 1.
-              numclusters = showerclusters.size();
-
-              int geoprojectionmatched = 0;
-              for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
-                if(coord->second == numclusters){++geoprojectionmatched;}
-              }
-
-              if(numclusters > 0){
-                EvalulateGeoProjectionMatched = true;
-                geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
-              }
-            }
-            else{
-              mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
-            }
-          }
-          else{
-            mf::LogError("ShowerValidation") << "No Assosoication between pf particles and clusters was found for shower made from a pf particle. No clustering validation was done." << std::endl;
-          }
-        }
-        else{
-          mf::LogError("ShowerValidation") << "pf particle handle is stale" << std::endl;
-        }
-      }
-      else{
-        mf::LogError("ShowerValidation") << "No cluster or pandora association" << std::endl;
-      }
-
-      if(EvalulateGeoProjectionMatched){
-
-        sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(geoprojectionmatched_score);
-
-      }
-      else{
-        sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(-99999);
-      }
-
-      ++numrecoshowersana;
-
-      if(fVerbose > 1){std::cout << "Cluster Validation Complete" << std::endl;}
 
     }//Shower Loop
 
@@ -1590,8 +1470,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     eNumTracks_TreeVal[fShowerModuleLabel].push_back(tracks.size());
 
     eNumTrueShowers_TreeVal[fShowerModuleLabel].push_back(num_of_showers);
-    eNumTrueShowersviaECut_TreeVal[fShowerModuleLabel].push_back(num_of_showers_viaEcut);
-    eNumTrueShowersviaDCut_TreeVal[fShowerModuleLabel].push_back(num_of_showers_viaDensitycut);
+
     for (uint i=0; i<E_of_showers.size(); i++){
       eTrueShowerE_TreeVal[fShowerModuleLabel].push_back(E_of_showers.at(i));
     }
@@ -1603,7 +1482,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     }
 
     //Whats the segementyness of the event.
-    eSegmentation_TreeVal[fShowerModuleLabel].push_back((float)showers.size()/(float)num_of_showers_viaDensitycut);
+    eSegmentation_TreeVal[fShowerModuleLabel].push_back((float)showers.size()/(float) num_of_showers);
     eTrueEnergy_TreeVal[fShowerModuleLabel].push_back(simenergy*1000);
 
 
@@ -1737,8 +1616,6 @@ void ana::ShowerValidation::ClusterValidation(std::vector< art::Ptr<recob::Clust
 
   //Get the Hits Handle used for this cluster type WARNING
   evt.get(fmhc.at(clusters.at(0).key()).front().id(),hitHandle);
-  std::cout<<"test"<<std::endl;
-
 
   if(!hitHandle.isValid()){
     mf::LogError("ShowerValidation") << "Hits handle is stale. No clustering validation done" << std::endl;
@@ -2032,11 +1909,7 @@ void ana::ShowerValidation::PFPValidation(std::vector<art::Ptr<recob::Cluster> >
 void ana::ShowerValidation::endJob() {
 
   std::cout << "Number of events ran over: " <<  numevents  << std::endl;
-  std::cout << "Number of events removed by the containment cut: " << containmentCutNum <<std::endl;
   std::cout << "Number of initial MC Showers: " <<  numshowers  << std::endl;
-  std::cout << "Number of MC showers that pass the energy cut: " <<  numshoowerspassenergy  << std::endl;
-  std::cout << "Number of MC showers that pass the density cut: " << numshowerspassdensity  << std::endl;
-  std::cout << "Number of MC showers that pass the containment cut: " <<  numshowerspassTPC  << std::endl;
   std::cout << "Number of reco showers: " << numrecoshowers  << std::endl;
   std::cout << "Number of reco showers analysed: " << numrecoshowersana  << std::endl;
 

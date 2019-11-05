@@ -30,7 +30,7 @@
 #include "larcore/Geometry/Geometry.h"
 #include "larcorealg/Geometry/PlaneGeo.h"
 #include "larcorealg/Geometry/WireGeo.h"
-
+#include "larreco/RecoAlg/MCRecoUtils/RecoUtils.h"
 // c++
 #include <vector>
 #include <map>
@@ -45,6 +45,15 @@ namespace ShowerUtils{
   std::map<geo::PlaneID,int> NumberofWiresHitByShower(std::vector<int> &TrackIDs, const std::vector<art::Ptr<recob::Hit> >& hits);
 
   std::map<int,std::vector<int> > FindTrueShowerIDs(std::map<int,const simb::MCParticle*>& particles);
+
+  std::map<int,std::vector<int> > GetShowerMothersCandidates(std::map<int,const simb::MCParticle*>& trueParticles);
+
+    void CutShowerMothersByE(std::map<int,std::vector<int> >& ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles, float& EnergyCut);
+    
+    void CutShowerMothersByDensity(std::map<int,std::vector<int> >& ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles,std::vector<art::Ptr<recob::Hit> >& hits, float& fDensityCut);
+
+  void RemoveNoneContainedParticles(std::map<int,std::vector<int> >&  ShowersMothers, std::map<int,const simb::MCParticle*>& trueParticles, std::map<int,float>& MCTrack_Energy_map);
+
 
 }
 

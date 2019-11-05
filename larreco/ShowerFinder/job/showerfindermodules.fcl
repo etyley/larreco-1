@@ -140,7 +140,10 @@ standard_showervalidation: {
  DrawCanvases:              false
  FillOnlyClosestShower:     true
  RemoveNonContainedParticles: true
- UseNeutrinoShowers: true
+ UseNeutrinoShowers:          true
+ ClusterValidation:           true
+ HitValidation:               true
+ MatchShowersInTruth:         true
  Verbose:                   0
  MinHitSize:                20
  SimEnergyCut:              0.1

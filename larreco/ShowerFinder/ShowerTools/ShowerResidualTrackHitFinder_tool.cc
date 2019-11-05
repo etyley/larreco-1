@@ -451,6 +451,8 @@ namespace ShowerRecoTools {
   void ShowerResidualTrackHitFinder::MakeTrackSeed(std::vector< art::Ptr< recob::SpacePoint> >& segment,
 						   art::FindManyP<recob::Hit> & fmh){
 
+    std::cout << "test seed 0" << std::endl;
+
     bool ok=true;
 
     int maxresidual_point = 0;
@@ -480,6 +482,7 @@ namespace ShowerRecoTools {
       ok = IsResidualOK(residual, segment.size());
       
     }
+    std::cout << "test seed 1" << std::endl;
   }
 
   std::vector<art::Ptr<recob::SpacePoint> > ShowerResidualTrackHitFinder::RunIncrementalSpacePointFinder(
