@@ -176,12 +176,12 @@ std::map<int,std::vector<int> > ShowerUtils::GetShowerMothersCandidates(std::map
     const simb::MCParticle* particle = particle_iter.second;
     
     //Check we are are shower particle.
-    if(particle->PdgCode() != 11 && particle->PdgCode() != 22){continue;}
+    if(TMath::Abs(particle->PdgCode()) != 11 && TMath::Abs(particle->PdgCode()) != 22){continue;}
 
     //Check the mother is not a shower particle 
     if(trueParticles.find(particle->Mother()) != trueParticles.end()){
-      if(trueParticles[particle->Mother()]->PdgCode() == 11
-	 || trueParticles[particle->Mother()]->PdgCode() == 22){
+      if(TMath::Abs(trueParticles[particle->Mother()]->PdgCode()) == 11
+	 || TMath::Abs(trueParticles[particle->Mother()]->PdgCode()) == 22){
 
 	//I propose that a daughter id always come and after a mother id the daughter can be added here and be in order. 
 	int mother_id = particle->Mother(); 
@@ -190,13 +190,13 @@ std::map<int,std::vector<int> > ShowerUtils::GetShowerMothersCandidates(std::map
 	while(mother_id != 0){
 	  particle_temp = trueParticles[mother_id]->Mother();
 	  if(trueParticles.find(particle_temp) == trueParticles.end()){break;}
-	  if(trueParticles[particle_temp]->PdgCode() != 11
-	     && trueParticles[particle_temp]->PdgCode() != 22){break;}
+	  if(TMath::Abs(trueParticles[particle_temp]->PdgCode()) != 11
+	     && TMath::Abs(trueParticles[particle_temp]->PdgCode()) != 22){break;}
 	  mother_id = particle_temp;
 	}
 	
 	//Add to the mother chain.
-	ShowerMotherCandidates[particle->TrackId()].push_back(particle->TrackId());
+	ShowerMotherCandidates[mother_id].push_back(particle->TrackId());
 
 	continue;
 
@@ -275,15 +275,14 @@ void ShowerUtils::RemoveNoneContainedParticles(std::map<int,std::vector<int> >& 
   for(std::map<int,std::vector<int> >::iterator ShowerMother=ShowersMothers.begin(); ShowerMother!=ShowersMothers.end();){
 
     //Loop over the daughters
-    float depsited_energy = 0;
-    float sim_energy      = 0;
+    float deposited_energy = 0;
+    float sim_energy      = trueParticles[ShowerMother->first]->E()*1000;
     for(auto const& Daughter: ShowerMother->second){
-      depsited_energy += MCTrack_Energy_map[Daughter];
-      sim_energy      += (trueParticles[Daughter]->E()*1000);
+      deposited_energy += MCTrack_Energy_map[Daughter];
     }
 
     //If over 90% of the shower energy is seen on the wires in truth. It is contained. 
-    if(depsited_energy/sim_energy < 0.9){
+    if(deposited_energy/sim_energy < 0.9){
       ShowersMothers.erase(ShowerMother++);
     }
     else{

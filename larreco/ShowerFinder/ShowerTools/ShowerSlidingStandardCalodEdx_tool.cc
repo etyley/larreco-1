@@ -123,8 +123,6 @@ namespace ShowerRecoTools{
   int ShowerSlidingStandardCalodEdx::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
       art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
-    
-    std::cout << "test" << std::endl;
 
     MaxDist         = fMaxDist;
     dEdxTrackLength = fdEdxTrackLength;
@@ -391,7 +389,7 @@ namespace ShowerRecoTools{
     //Need to sort out errors sensibly.
     ShowerEleHolder.SetElement(dEdx_val,dEdx_valErr,fShowerdEdxOuputLabel);
     ShowerEleHolder.SetElement(best_plane,fShowerBestPlaneOutputLabel);
-    ShowerEleHolder.SetElement(dEdx_vec_cut,"dEdxVec");
+    ShowerEleHolder.SetElement(dEdx_vec_cut,fShowerdEdxVecOuputLabel);
     return 0;
   }
 
@@ -403,7 +401,8 @@ namespace ShowerRecoTools{
       dEdx_val = dEdx_vec;
       return;
     }
-
+    
+    
     std::cout << "why am I running" << std::endl;
 
     //Can only do this with 4 hits. 

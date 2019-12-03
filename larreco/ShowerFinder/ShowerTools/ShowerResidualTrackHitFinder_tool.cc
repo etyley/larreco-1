@@ -202,6 +202,12 @@ namespace ShowerRecoTools {
 
     std::cout << "MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual: " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl;
 
+    if(StartFitSize == 0){
+      throw cet::exception("ShowerResidualTrackHitFinder") << "We cannot make a track if you don't gives us at leats one hit. Change fStartFitSize please to something sensible";
+      return 1;
+    }
+
+
       
     //This is all based on the shower vertex being known. If it is not lets not do the track
     if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
@@ -460,12 +466,15 @@ namespace ShowerRecoTools {
     //Check the residual 
     double residual = FitSegmentAndCalculateResidual(segment, fmh, maxresidual_point);
 
+    std::cout << "test seed 1" << std::endl;
+
     //Is it okay
     ok = IsResidualOK(residual, segment.size());
 
+    std::cout << "test seed 2" << std::endl;
     
     //Remove points until we can fit a track.
-    while(!ok){
+    while(!ok && segment.size()!=1){
       
       //Remove the point with the highest residual
       for (auto sp = segment.begin(); sp != segment.end();  ++sp){

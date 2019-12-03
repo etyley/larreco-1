@@ -45,7 +45,7 @@ tool_type:  ShowerLinearEnergy
               ThreeDGradient:  0
               ThreeDIntercept: 0
               ShowerEnergyOutputLabel: "ShowerEnergy"
-                   }
+}
 
 shower2Dlinearregressiontrackhitfinder:{
 tool_type:             Shower2DLinearRegressionTrackHitFinder
@@ -136,7 +136,7 @@ tool_type: ShowerStandardCalodEdx
              MissFirstPoint:  true #Do not use any hits from the first wire
              dEdxTrackLength: 3    #Max length from a hit can be to the start point in cm.
              ScaleWithEnergy:      false #Vary the parameters as function of E
-             EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy wit
+             EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              InitialTrackHitsInputLabel: "InitialTrackHits"
@@ -327,6 +327,7 @@ tool_type: ShowerSlidingStandardCalodEdx
              InitialTrackInputLabel: "InitialTrack"
              ShowerdEdxOuputLabel: "ShowerdEdx" 
              ShowerBestPlaneOutputLabel: "ShowerBestPlane"
+             ShowerdEdxVecOuputLabel: "ShowerdEdxVec"
 }
 
 showerresidualtrackhitfinder:{
@@ -365,9 +366,9 @@ showerpcapropergationstartposition:{
 }
 
 showerbayeslikelihooddedxcutting:{
-    tool_type: ShowerBayesLikelihooddEdxCutting
+    tool_type:  ShowerLikelihooddEdxCutting
     BaseTools: @local::showerbasetools
-    dEdxInputLabel: "dEdxVec"
+    dEdxInputLabel: "ShowerdEdxVec"
     NumSeedHits: 3
     ProbDiff: 0.01
     ProbDiffSeed: 0.01
@@ -376,6 +377,8 @@ showerbayeslikelihooddedxcutting:{
     PriorFname: "dEdx_plots.root"
     PriorElectronHistoName: "electron_dedx"
     PriorPhotonHistoName: "photon_dedx"
+    DefineBestPlane: false
+    ShowerBestPlaneOutputLabel: "ShowerBestPlane"
 }
 
 END_PROLOG
