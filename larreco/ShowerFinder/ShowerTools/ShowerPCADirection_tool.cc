@@ -220,6 +220,7 @@ namespace ShowerRecoTools {
     float sumx2 = 0;
     float sumy2 = 0;
     float sumxy = 0;
+    float n     = 0;
 
     //Get the rms of the segments and caclulate the gradient.
     for(auto const& segment: len_segment_map){
@@ -232,9 +233,10 @@ namespace ShowerRecoTools {
       sumx2 += segment.first * segment.first;
       sumy2 += RMS*RMS;
       sumxy += RMS * segment.first;
+      ++n;
     }
 
-    double RMSgradient = (sumxy - sumx*sumy)/(sumx2 - sumx*sumx);
+    double RMSgradient = (sumxy - sumx*sumy/n)/(sumx2 - sumx*sumx/n);
     return RMSgradient;
 
   }

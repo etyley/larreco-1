@@ -200,7 +200,7 @@ namespace ShowerRecoTools {
       
       }
 
-    std::cout << "MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual: " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl;
+    //    std::cout << "MaxResidualDiff: " << MaxResidualDiff << " MaxAverageResidual: " << MaxAverageResidual << " StartFitSize: " << StartFitSize << " NMissPoints: " << NMissPoints << " TrackMaxAdjacentSPDistance: " << TrackMaxAdjacentSPDistance << std::endl;
 
     if(StartFitSize == 0){
       throw cet::exception("ShowerResidualTrackHitFinder") << "We cannot make a track if you don't gives us at leats one hit. Change fStartFitSize please to something sensible";
@@ -269,7 +269,6 @@ namespace ShowerRecoTools {
 
       //Order the spacepoints
       IShowerTool::GetTRACSAlg().OrderShowerSpacePoints(spacePoints,ShowerStartPosition,ShowerDirection);
-
       //Remove the back hits if requird.
       if (fForwardHitsOnly){
         int back_sps=0;
@@ -344,7 +343,7 @@ namespace ShowerRecoTools {
     if (fRunTest) RunTestOfIncrementalSpacePointFinder(fmh);
 
     //Actually runt he algorithm.
-    std::cout << "test1 " << std::endl;
+    //    std::cout << "test1 " << std::endl;
     std::vector<art::Ptr<recob::SpacePoint> > track_sps = RunIncrementalSpacePointFinder(spacePoints, fmh);
 
     // Get the hits associated to the space points and seperate them by planes
@@ -417,14 +416,14 @@ namespace ShowerRecoTools {
 
         //Get the charge.
         float Charge = IShowerTool::GetTRACSAlg().SpacePointCharge(sp,fmh);
-        std::cout << "Charge: " << Charge << std::endl;
+	//        std::cout << "Charge: " << Charge << std::endl;
 
         //Get the time of the spacepoint
         float Time = IShowerTool::GetTRACSAlg().SpacePointTime(sp,fmh);
 
         //Correct for the lifetime at the moment.
         Charge *= TMath::Exp((fDetProp->SamplingRate() * Time ) / (fDetProp->ElectronLifetime()*1e3));
-        std::cout << "Charge: "<< Charge << std::endl;
+	//        std::cout << "Charge: "<< Charge << std::endl;
 
         //Charge Weight
         wht *= TMath::Sqrt(Charge/TotalCharge);
@@ -457,7 +456,7 @@ namespace ShowerRecoTools {
   void ShowerResidualTrackHitFinder::MakeTrackSeed(std::vector< art::Ptr< recob::SpacePoint> >& segment,
 						   art::FindManyP<recob::Hit> & fmh){
 
-    std::cout << "test seed 0" << std::endl;
+    //    std::cout << "test seed 0" << std::endl;
 
     bool ok=true;
 
@@ -466,12 +465,12 @@ namespace ShowerRecoTools {
     //Check the residual 
     double residual = FitSegmentAndCalculateResidual(segment, fmh, maxresidual_point);
 
-    std::cout << "test seed 1" << std::endl;
+    //    std::cout << "test seed 1" << std::endl;
 
     //Is it okay
     ok = IsResidualOK(residual, segment.size());
 
-    std::cout << "test seed 2" << std::endl;
+    //    std::cout << "test seed 2" << std::endl;
     
     //Remove points until we can fit a track.
     while(!ok && segment.size()!=1){
@@ -491,7 +490,7 @@ namespace ShowerRecoTools {
       ok = IsResidualOK(residual, segment.size());
       
     }
-    std::cout << "test seed 1" << std::endl;
+    //    std::cout << "test seed 1" << std::endl;
   }
 
   std::vector<art::Ptr<recob::SpacePoint> > ShowerResidualTrackHitFinder::RunIncrementalSpacePointFinder(

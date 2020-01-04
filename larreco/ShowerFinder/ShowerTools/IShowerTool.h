@@ -13,7 +13,7 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "canvas/Persistency/Common/Ptr.h"
 #include "art/Framework/Principal/Event.h"
-#include "art/Framework/Core/EDProducer.h"
+#include "art/Framework/Core/ProducesCollector.h"
 #include "art/Persistency/Common/PtrMaker.h"
 
 //LArSoft Includes
@@ -54,18 +54,17 @@ namespace ShowerRecoTools{
         int calculation_status = CalculateElement(pfparticle, Event, ShowerEleHolder);
         if (calculation_status != 0) return calculation_status;
         if (fRunEventDisplay){
-	  evd_display_name_append += "_" + producerPtr->moduleDescription().moduleLabel();
           IShowerTool::GetTRACSAlg().DebugEVD(pfparticle,Event,ShowerEleHolder,evd_display_name_append);
         } 
         return calculation_status;
       }
 
       //Function to initialise the producer i.e produces<std::vector<recob::Vertex> >(); commands go here.
-      virtual void InitialiseProducers(){return;}
+      virtual void InitialiseProducers(){}
 
       //Set the point looking back at the producer module show we can make things in the module
-      void SetPtr(art::EDProducer* modulePtr){
-        producerPtr = modulePtr;
+      void SetPtr(art::ProducesCollector* collector){
+        collectorPtr = collector;
       }
 
       //Initialises the unique ptr holder so that the tool can access it behind the scenes.
@@ -91,6 +90,7 @@ namespace ShowerRecoTools{
       //Flags
       bool fRunEventDisplay;
 
+      art::ProducesCollector* collectorPtr;
 
     protected:
 
@@ -129,11 +129,17 @@ namespace ShowerRecoTools{
       //Function so that the user can add products to the art event. This will set up the unique ptrs and the ptr makers required.
       //Example: InitialiseProduct<std::vector<recob<vertex>>("MyVertex")
       template <class T>
-        void InitialiseProduct(std::string Name, std::string InstanceName=""){
-	      int set = UniquePtrs->SetShowerUniqueProduerPtr(type<T>(),Name,InstanceName);
-	      if(set == 0){producerPtr->produces<T>(InstanceName);}
-	      return;
+	void InitialiseProduct(std::string Name, std::string InstanceName=""){
+	
+	if (collectorPtr == nullptr){
+	  mf::LogWarning("IShowerTool") << "The art::ProducesCollector ptr has not been set";
+	  return;
+	}
+	
+	collectorPtr->produces<T>(InstanceName);
+	UniquePtrs->SetShowerUniqueProduerPtr(type<T>(),Name,InstanceName);
       }
+
 
       //Function so that the user can add assocations to the event.
       //Example: AddSingle<art::Assn<recob::Vertex,recob::shower>((art::Ptr<recob::Vertex>) Vertex, (art::Prt<recob::shower>) Shower), "myassn")
@@ -154,9 +160,6 @@ namespace ShowerRecoTools{
       void PrintPtr(std::string Name){
         UniquePtrs->PrintPtr(Name);
       }
-
-      //Producer ptr
-      art::EDProducer* producerPtr;
 
   };
 }

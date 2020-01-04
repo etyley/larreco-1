@@ -78,8 +78,7 @@ private:
     size_t              fMaxMultiHit;              ///<maximum hits for multi fit
     int                 fAreaMethod;               ///<Type of area calculation
     std::vector<double> fAreaNormsVec;             ///<factors for converting area to same units as peak height
-    double	            fChi2NDF;                  ///maximum Chisquared / NDF allowed for a hit to be saved
-
+    double	            fChi2NDF;                  ///maximum Chisquared / NDF allowed for a hit to be saved.
     std::vector<float>  fPulseHeightCuts;
     std::vector<float>  fPulseWidthCuts;
     std::vector<float>  fPulseRatioCuts;

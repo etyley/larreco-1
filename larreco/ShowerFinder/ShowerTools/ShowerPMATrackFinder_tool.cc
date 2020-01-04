@@ -41,8 +41,6 @@ namespace ShowerRecoTools{
 
     ShowerPMATrackFinder(const fhicl::ParameterSet& pset);
 
-    ~ShowerPMATrackFinder();
-
     //Generic Track Finder
     int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
 			 art::Event& Event,
@@ -85,16 +83,7 @@ namespace ShowerRecoTools{
   {
   }
 
-  ShowerPMATrackFinder::~ShowerPMATrackFinder()
-  {
-  }
-
   void ShowerPMATrackFinder::InitialiseProducers(){
-    if(producerPtr == NULL){
-      mf::LogWarning("ShowerPMATrackFinder") << "The producer ptr has not been set" << std::endl;
-      return;
-    }
-
     //Set up the recob::Track and the Assns so they can be put in the event
     InitialiseProduct<std::vector<recob::Track> >(fInitialTrackOutputLabel);
     InitialiseProduct<art::Assns<recob::Shower, recob::Track > >("ShowerTrackAssn");

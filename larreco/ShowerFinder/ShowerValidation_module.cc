@@ -135,6 +135,7 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     float fDensityCut;
     float fMaxSimEnergy;
     float fMinRecoEnergy;
+    float fMatchedCut;
 
     std::vector<std::string> fShowerModuleLabels;
     std::vector<std::string> fHitModuleLabels;
@@ -172,6 +173,7 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     std::map<std::string,std::vector<float> > sPDG_TreeVal;
     std::map<std::string,std::vector<float> > sMother_TreeVal;
     std::map<std::string,std::vector<float> > sPFPID_TreeVal;
+    std::map<std::string,std::vector<float> > sTrackPDG_TreeVal;
 
     std::map<std::string,std::vector<float> > pfpNeutrinos_TreeVal;
     std::map<std::string,std::vector<float> > pfpTracks_TreeVal;
@@ -227,7 +229,7 @@ class ana::ShowerValidation : public art::EDAnalyzer {
     //TTree
     TTree* Tree;
 
-    //Service handles
+    //Service handlesacktracker
     art::ServiceHandle<cheat::BackTrackerService> backtracker;
     art::ServiceHandle<cheat::ParticleInventoryService> particleInventory;
     art::ServiceHandle<geo::Geometry> geom;
@@ -268,6 +270,7 @@ ana::ShowerValidation::ShowerValidation(const fhicl::ParameterSet& pset) : EDAna
   fDensityCut                  = pset.get<float>("DensityCut");
   fMaxSimEnergy                = pset.get<float>("MaxSimEnergy");
   fMinRecoEnergy               = pset.get<float>("MinRecoEnergy");
+  fMatchedCut                  = pset.get<float>("MatchedCut");
 }
 
 void ana::ShowerValidation::initTree(TTree* Tree, std::string branchName, std::map<std::string,std::vector<float> >& Metric,   std::vector<std::string> fShowerModuleLabels){
@@ -337,6 +340,7 @@ void ana::ShowerValidation::beginJob() {
   initTree(Tree,"sTrueTrackLengh",sTrueTrackLengh_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sTrueTrackSpread",sTrueTrackSpread_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sPDG",sPDG_TreeVal,fShowerModuleLabels);
+  initTree(Tree,"sPDGTrack",sTrackPDG_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sMother",sMother_TreeVal,fShowerModuleLabels);
   initTree(Tree,"sPFPID",sPFPID_TreeVal,fShowerModuleLabels);
 
@@ -682,8 +686,8 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
     art::Handle<std::vector<recob::Track> > showertrackHandle;
     std::vector<art::Ptr<recob::Track> > showertrack;
-    //    if(evt.getByLabel(fShowerModuleLabel,showertrackHandle))
-    //  {art::fill_ptr_vector(showertrack,showertrackHandle);}
+    if(evt.getByLabel(fShowerModuleLabel,showertrackHandle))
+      {art::fill_ptr_vector(showertrack,showertrackHandle);}
 
     //Getting the Shower Information
     //Association between Showers and 2d Hits
@@ -700,6 +704,9 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
     //Association between Showers and pfParticle
     art::FindManyP<recob::PFParticle> fmpf(showerListHandle, evt, fShowerModuleLabel);
+
+    //Association between spacepoints and showers
+    art::FindManyP<recob::SpacePoint> fmsp(showerListHandle, evt, fShowerModuleLabel);
 
     std::vector< art::Ptr<recob::Hit> > showerhits; //hits in the shower
     std::vector< art::Ptr<recob::Vertex> > neutrinoVertices;
@@ -993,12 +1000,12 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
       //See if the initial track hit are created. 
       if(showertrackHandle.isValid()){
-
-	//Association between shower and initial track hits 
-	art::FindManyP<recob::Track> fmit(showerListHandle, evt, fShowerModuleLabel);
-	art::FindManyP<recob::Hit> fmith(showertrackHandle, evt, fShowerModuleLabel);
-
-	if(fmit.size()<1){continue;}
+      
+      //Association between shower and initial track hits 
+      art::FindManyP<recob::Track> fmit(showerListHandle, evt, fShowerModuleLabel);
+      art::FindManyP<recob::Hit> fmith(showertrackHandle, evt, fShowerModuleLabel);
+      
+      	if(fmit.size()<1){continue;}
 	
  	//Get the track 
 	if(fmit.size() < shower.key()){continue;}
@@ -1145,7 +1152,20 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       if(fMatchShowersInTruth){
 
 	const simb::MCParticle* MCShowerParticle = trueParticles.at(ShowerTrackID);
-	sPDG_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->PdgCode());
+	
+	int shower_pdg = MCShowerParticle->PdgCode();
+
+	//Check if another particle actually gave more energy.
+	int MostHitsTrackID = TMath::Abs(RecoUtils::TrueParticleIDFromTotalRecoHits(showerhits));
+	if(trueParticles.find(MostHitsTrackID) != trueParticles.end()){
+	  int most_hit_pdg = trueParticles.at(MostHitsTrackID)->PdgCode();
+	  sTrackPDG_TreeVal[fShowerModuleLabel].push_back(most_hit_pdg);
+	}
+	else{
+	  sTrackPDG_TreeVal[fShowerModuleLabel].push_back(-999);
+	}
+	
+	sPDG_TreeVal[fShowerModuleLabel].push_back(shower_pdg);
 	sMother_TreeVal[fShowerModuleLabel].push_back(MCShowerParticle->Mother());
       
 
@@ -1217,6 +1237,53 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	TrueTrackLength = TrueShowerDirection.Mag();
       }
 
+      bool EvalulateGeoProjectionMatched = false;
+      float geoprojectionmatched_score = -99999;
+
+      if(fmsp.isValid()){
+	//Get the spacepoints 
+	std::vector<art::Ptr<recob::SpacePoint> > sps = fmsp.at(shower.key());
+
+	if(sps.size() > 0){
+	  art::Handle<std::vector<recob::SpacePoint> > spHandle;
+	  evt.get(sps.front().id(),spHandle);
+	  
+	  if(spHandle.isValid()){
+	    art::FindManyP<recob::Hit> fmsph(spHandle, evt, spHandle.provenance()->moduleLabel());
+
+	    float geomatched = 0;
+	    for(auto const& sp: sps){
+	
+	      //Get the the hit
+	      std::vector< art::Ptr<recob::Hit> > hit = fmsph.at(sp.key());
+	      if(hit.size() < 1){continue;}
+			
+	      //Get the true position 
+	      std::vector<double> hitXYZ = {-999,-999,-999};
+	      try{
+		hitXYZ = backtracker->HitToXYZ(hit[0]);
+	      }
+	      catch(...){
+		if(fVerbose>1){std::cout << "Noise Hit" << std::endl;}
+		continue;
+	      }
+			
+	      TVector3 trueposition = {hitXYZ[0],hitXYZ[1],hitXYZ[2]};
+	      //Get the spacepoint xyz.
+	      const Double32_t* sp_xyz = sp->XYZ();
+
+	      TVector3 sp_postiion = {sp_xyz[0], sp_xyz[1], sp_xyz[2]};
+	      //If the spacepoint was within 0.5 cm of the ide then its a good match.
+	      if((trueposition-sp_postiion).Mag() < fMatchedCut){++geomatched;}
+	    }
+	    if(sps.size() > 0){
+	      EvalulateGeoProjectionMatched = true;  
+	      geoprojectionmatched_score = geomatched/(float) sps.size();
+	    }
+	  }
+	}
+      }
+      std::cout<< "finished to spacepoint" << std::endl;
 
       //Bools to fill metric histrograms wheen needed.
       bool EvaluateShowerDirection       = false;
@@ -1224,7 +1291,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       bool EvaluatesLength               = false;
       bool EvaluateShowerEnergy          = false;
       bool EvaluatesdEdx                 = false;
-      bool EvalulateGeoProjectionMatched = false;
 
       //Evaulate 3D Shower Reconstruction Dependent Metrics
       if(!std::isnan(ShowerDirection.X()) || ShowerDirection.Mag() == 0) {EvaluateShowerDirection = true; ++MinEvaluateShowerDirection[ShowerTrackID];}
@@ -1384,6 +1450,17 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       else{
         sdEdx_TreeVal[fShowerModuleLabel].push_back(-99999);
       }
+
+      if(EvalulateGeoProjectionMatched){
+	
+	sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(geoprojectionmatched_score);
+	
+      }
+      else{
+	sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(-99999);
+      }
+      
+
     
       //Fill the 2D histograms
 
@@ -1428,25 +1505,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       
       if(fClusterValidation){
 
-	//Firstly look inf the hits in the shower match in all given planes
-	std::map<std::vector<double>, int> HitCoord_map;
-	float numclusters = -9999;
-	float geoprojectionmatched_score = -99999;
-	for(std::vector< art::Ptr<recob::Hit> >::iterator hitIt=showerhits.begin(); hitIt!=showerhits.end(); ++hitIt){
-	  try{
-	    const std::vector<sim::IDE> hitIDEs = backtracker->HitToAvgSimIDEs(*hitIt);
-	    for(unsigned int hitIDE=0; hitIDE<hitIDEs.size(); ++hitIDE){
-	      std::vector<double> hitcoord = {hitIDEs[hitIDE].x, hitIDEs[hitIDE].y, hitIDEs[hitIDE].z};
-	      //std::cout << "x: " << hitIDEs[hitIDE].x << ", y: " << hitIDEs[hitIDE].y << ", z: " << hitIDEs[hitIDE].z << " plane: " << (*hitIt)->WireID().Plane << std::endl;;
-	      ++HitCoord_map[hitcoord];
-	    }
-	  }
-	  catch(...){
-	    if(fVerbose>1){std::cout << "Noise Hit" << std::endl;}
-	  }
-	}
-
-
 	//Get the clusters associated to the shower.Needs Work.
 	if(fmch.isValid()){
 	  art::Handle<std::vector<recob::Cluster > > clusterHandle;
@@ -1454,17 +1512,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	  if(clusterHandle.isValid()){
 	    std::vector<art::Ptr<recob::Cluster> > showerclusters = fmch.at(shower.key());
 	    ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
-
-	    //Loop over the hit coordinate map where there there is a hit on every plane give a 1.
-	    numclusters = showerclusters.size();
-	    int geoprojectionmatched = 0;
-	    for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
-	      if(coord->second == numclusters){++geoprojectionmatched;}
-	    }
-	    if(numclusters > 0){
-	      EvalulateGeoProjectionMatched = true;
-	      geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
-	    }
 	  }
 	  else{
 	    mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
@@ -1482,18 +1529,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	      if(clusterHandle.isValid()){
 		std::vector< art::Ptr<recob::Cluster> > showerclusters = fmcpf.at(shower.key());
 		ana::ShowerValidation::ClusterValidation(showerclusters,evt,clusterHandle,ShowersMothers,MCTrack_Energy_map,MCTrack_hit_map,ShowerTrackID,simenergy,fShowerModuleLabel);
-		//Loop over the hit coordinate map where there there is a hit on every plane give a 1.
-		numclusters = showerclusters.size();
-
-		int geoprojectionmatched = 0;
-		for(std::map<std::vector<double>, int>::iterator coord=HitCoord_map.begin(); coord!=HitCoord_map.end(); ++coord){
-		  if(coord->second == numclusters){++geoprojectionmatched;}
-		}
-
-		if(numclusters > 0){
-		  EvalulateGeoProjectionMatched = true;
-		  geoprojectionmatched_score = (float) geoprojectionmatched/(float) HitCoord_map.size();
-		}
 	      }
 	      else{
 		mf::LogError("ShowerValidation") << "Cluster handle is stale. No clustering validation done" << std::endl;
@@ -1510,16 +1545,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 	else{
 	  mf::LogError("ShowerValidation") << "No cluster or pandora association" << std::endl;
 	}
-
-	if(EvalulateGeoProjectionMatched){
-
-	  sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(geoprojectionmatched_score);
-
-	}
-	else{
-	  sGeoProjectionMatched_TreeVal[fShowerModuleLabel].push_back(-99999);
-	}
-
 
 	if(fVerbose > 1){std::cout << "Cluster Validation Complete" << std::endl;}
 
@@ -1604,6 +1629,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
     sTrueTrackLengh_TreeVal[fShowerModuleLabels[shwrlab_it]].clear(); 
     sTrueTrackSpread_TreeVal[fShowerModuleLabels[shwrlab_it]].clear(); 
     sPDG_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
+    sTrackPDG_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sMother_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
     sPFPID_TreeVal[fShowerModuleLabels[shwrlab_it]].clear();
 

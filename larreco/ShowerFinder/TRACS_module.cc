@@ -135,7 +135,8 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
   //  Initialise the EDProducer ptr in the tools 
   std::vector<std::string> SetupTools;
   for(unsigned int i=0; i<fShowerTools.size(); ++i){ 
-    fShowerTools[i]->SetPtr(this);
+    if(std::find(SetupTools.begin(), SetupTools.end(), fShowerToolNames[i]) != SetupTools.end()){continue;}
+    fShowerTools[i]->SetPtr(&producesCollector());
     fShowerTools[i]->InitaliseProducerPtr(uniqueproducerPtrs);
     fShowerTools[i]->InitialiseProducers();
   }
@@ -231,7 +232,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     for(auto const& fShowerTool: fShowerTools){
 
       //Calculate the metric
-      std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(0);
+      std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(0) + "_" + this->moduleDescription().moduleLabel();
 
       err = fShowerTool->RunShowerTool(pfp,evt,selement_holder,evd_disp_append);
 
@@ -247,7 +248,8 @@ void reco::shower::TRACS::produce(art::Event& evt) {
 
       for(auto const& fShowerTool: fShowerTools){
 	//Calculate the metric
-	std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(1);
+	std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(1) + "_" + this->moduleDescription().moduleLabel();
+
 	err = fShowerTool->RunShowerTool(pfp,evt,selement_holder,evd_disp_append);
       
 	if(err){
@@ -303,6 +305,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     TVector3                           ShowerDirection      = {-999,-999,-999};
     std::vector<double>                ShowerEnergy         = {-999,-999,-999};
     std::vector<double>                ShowerdEdx           = {-999,-999,-999};
+    double                             ShowerLength         = -999;
 
     int                                BestPlane               = -999;
     TVector3                           ShowerStartPositionErr  = {-999,-999,-999};
@@ -316,6 +319,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     if(selement_holder.CheckElement(fShowerEnergyLabel))           err += selement_holder.GetElementAndError(fShowerEnergyLabel,ShowerEnergy,ShowerEnergyErr);
     if(selement_holder.CheckElement(fShowerdEdxLabel))             err += selement_holder.GetElementAndError(fShowerdEdxLabel,ShowerdEdx,ShowerdEdxErr  );
     if(selement_holder.CheckElement(fShowerBestPlaneLabel))        err += selement_holder.GetElement(fShowerBestPlaneLabel,BestPlane);
+    if(selement_holder.CheckElement(fShowerLengthLabel))           err += selement_holder.GetElement(fShowerLengthLabel,ShowerLength);
 
     if(err){
       throw cet::exception("TRACS")  << "Error in TRACS Module. A Check on a shower property failed " << std::endl;
@@ -327,6 +331,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       std::cout<<"Shower Direction: X:"<<ShowerDirection.X()<<" Y: "<<ShowerDirection.Y()<<" Z: "<<ShowerDirection.Z()<<std::endl;
       std::cout<<"Shower dEdx: size: "<<ShowerdEdx.size()<<" Plane 0: "<<ShowerdEdx.at(0)<<" Plane 1: "<<ShowerdEdx.at(1)<<" Plane 2: "<<ShowerdEdx.at(2)<<std::endl;
       std::cout<<"Shower Energy: size: "<<ShowerEnergy.size()<<" Plane 0: "<<ShowerEnergy.at(0)<<" Plane 1: "<<ShowerEnergy.at(1)<<" Plane 2: "<<ShowerEnergy.at(2)<<std::endl;
+      std::cout<<"Shower Length: " << ShowerLength << std::endl;
       std::cout<<"Shower Best Plane: "<<BestPlane<<std::endl;
 
       //Print what has been created in the shower
@@ -334,7 +339,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     }
 
     //Make the shower 
-    recob::Shower shower = recob::Shower(ShowerDirection, ShowerDirectionErr,ShowerStartPosition, ShowerDirectionErr,ShowerEnergy,ShowerEnergyErr,ShowerdEdx, ShowerdEdxErr, BestPlane, -999);
+    recob::Shower shower = recob::Shower(ShowerDirection, ShowerDirectionErr,ShowerStartPosition, ShowerDirectionErr,ShowerEnergy,ShowerEnergyErr,ShowerdEdx, ShowerdEdxErr, BestPlane,util::kBogusI, ShowerLength, -999);
     selement_holder.SetElement(shower,"shower");
     ++shower_iter;
     art::Ptr<recob::Shower> ShowerPtr = this->GetProducedElementPtr<recob::Shower>("shower",selement_holder);

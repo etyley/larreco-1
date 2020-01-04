@@ -372,6 +372,7 @@ showerbayeslikelihooddedxcutting:{
     NumSeedHits: 3
     ProbDiff: 0.01
     ProbDiffSeed: 0.01
+    PostiorCut: 0.01
     nSkipHits: 2
     ShowerdEdxOuputLabel: "ShowerdEdx"
     PriorFname: "dEdx_plots.root"
@@ -379,6 +380,16 @@ showerbayeslikelihooddedxcutting:{
     PriorPhotonHistoName: "photon_dedx"
     DefineBestPlane: false
     ShowerBestPlaneOutputLabel: "ShowerBestPlane"
+}
+
+showerlength90percentile:{
+    tool_type:  ShowerLength90Percentile
+    BaseTools: @local::showerbasetools
+
+    PFParticleModuleLabel: "pandora"
+    ShowerStartPositionInputLabel: "ShowerStartPosition"
+    ShowerDirectionInputLabel: "ShowerDirection"
+    ShowerLengthOuputLabel: "ShowerLength"
 }
 
 END_PROLOG

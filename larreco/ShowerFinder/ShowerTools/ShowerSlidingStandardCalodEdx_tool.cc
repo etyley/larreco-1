@@ -88,6 +88,7 @@ namespace ShowerRecoTools{
       std::string fInitialTrackInputLabel;
       std::string fShowerdEdxOuputLabel;
       std::string fShowerBestPlaneOutputLabel;
+      std::string fShowerdEdxVecOuputLabel;
   };
 
 
@@ -112,7 +113,8 @@ namespace ShowerRecoTools{
     fInitialTrackSpacePointsInputLabel(pset.get<std::string>("InitialTrackSpacePointsInputLabel")),
     fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
     fShowerdEdxOuputLabel(pset.get<std::string>("ShowerdEdxOuputLabel")),
-    fShowerBestPlaneOutputLabel(pset.get<std::string>("ShowerBestPlaneOutputLabel"))
+    fShowerBestPlaneOutputLabel(pset.get<std::string>("ShowerBestPlaneOutputLabel")),
+    fShowerdEdxVecOuputLabel(pset.get<std::string>("ShowerdEdxVecOuputLabel"))
   {
   }
 

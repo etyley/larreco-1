@@ -83,10 +83,6 @@ namespace ShowerRecoTools{
   }
 
   void ShowerPandoraSlidingFitTrackFinder::InitialiseProducers(){
-    if(producerPtr == NULL){
-      mf::LogWarning("ShowerPandoraSlidingFitTrackFinder") << "The producer ptr has not been set" << std::endl;
-      return;
-    }
 
     InitialiseProduct<std::vector<recob::Track> >(fInitialTrackOutputLabel);
     InitialiseProduct<art::Assns<recob::Shower, recob::Track > >("ShowerTrackAssn");
@@ -123,6 +119,41 @@ namespace ShowerRecoTools{
     std::vector<art::Ptr<recob::SpacePoint> > spacepoints;
     ShowerEleHolder.GetElement(fInitialTrackSpacePointsInputLabel,spacepoints);
 
+    const unsigned int nWirePlanes(fGeom->MaxPlanes());
+
+    if (nWirePlanes > 3)
+        throw cet::exception("LArPandoraTrackCreation") << " LArPandoraTrackCreation::produce --- More than three wire planes present ";
+
+    if ((0 == fGeom->Ncryostats()) || (0 == fGeom->NTPC(0)))
+        throw cet::exception("LArPandoraTrackCreation") << " LArPandoraTrackCreation::produce --- unable to access first tpc in first cryostat ";
+
+    std::unordered_set<geo::_plane_proj> planeSet;
+    for (unsigned int iPlane = 0; iPlane < nWirePlanes; ++iPlane)
+        (void) planeSet.insert(fGeom->TPC(0, 0).Plane(iPlane).View());
+
+    // ATTN: Expectations here are that the input geometry corresponds to either a single or dual phase LArTPC.  For single phase we expect
+    // three views, U, V and either W or Y, for dual phase we expect two views, W and Y.
+    const bool isDualPhase(fGeom->MaxPlanes() == 2);
+
+    if (nWirePlanes != planeSet.size())
+        throw cet::exception("LArPandoraTrackCreation") << " LArPandoraGeometry::LoadGeometry --- geometry description for wire plane(s) missing ";
+
+    if (isDualPhase && (!planeSet.count(geo::kW) || !planeSet.count(geo::kY)))
+        throw cet::exception("LArPandoraTrackCreation") << " LArPandoraGeometry::LoadGeometry --- dual phase scenario; expect to find w and y views ";
+
+    if (!isDualPhase && (!planeSet.count(geo::kU) || !planeSet.count(geo::kV) || (planeSet.count(geo::kW) && planeSet.count(geo::kY))))
+        throw cet::exception("LArPandoraTrackCreation") << " LArPandoraGeometry::LoadGeometry --- single phase scenatio; expect to find u and v views; if there is one further view, it must be w or y ";
+
+    const bool useYPlane((nWirePlanes > 2) && planeSet.count(geo::kY));
+
+    // ATTN: In the dual phase mode, map the wire planes as follows W->U and Y->V.  This mapping was chosen so that the dual phase wire
+    // planes, which are inherently induction only, are mapped to induction planes in the single phase geometry.
+    const float wirePitchU(fGeom->WirePitch((isDualPhase ? geo::kW : geo::kU)));
+    const float wirePitchV(fGeom->WirePitch((isDualPhase ? geo::kY : geo::kV)));
+    const float wirePitchW((nWirePlanes < 3) ? 0.5f * (wirePitchU + wirePitchV) : (useYPlane) ? fGeom->WirePitch(geo::kY) :
+        fGeom->WirePitch(geo::kW));
+
+
     const pandora::CartesianVector vertexPosition(ShowerStartPosition.X(), ShowerStartPosition.Y(),
         ShowerStartPosition.Z());
 
@@ -135,7 +166,7 @@ namespace ShowerRecoTools{
     pandora::IntVector indexVector;
     try{
       lar_content::LArPfoHelper::GetSlidingFitTrajectory(cartesianPointVector, vertexPosition,
-          fSlidingFitHalfWindow, fGeom->WirePitch(geo::kW), trackStateVector, &indexVector);
+          fSlidingFitHalfWindow, wirePitchW, trackStateVector, &indexVector);
     }
     catch (const pandora::StatusCodeException &){
       mf::LogWarning("ShowerPandoraSlidingFitTrackFinder") << "Unable to extract sliding fit trajectory" << std::endl;

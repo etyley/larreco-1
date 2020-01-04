@@ -162,7 +162,7 @@ namespace hit {
       //GET THE LIST OF BAD CHANNELS.
       lariov::ChannelStatusProvider const& channelStatus
         = art::ServiceHandle<lariov::ChannelStatusService const>()->GetProvider();
-
+      
       lariov::ChannelStatusProvider::ChannelSet_t const BadChannels
         = channelStatus.BadChannels();
 
