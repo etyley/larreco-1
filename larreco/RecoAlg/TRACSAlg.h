@@ -50,11 +50,14 @@ class shower::TRACSAlg {
         TVector3 const& ShowerPosition
         ) const;
 
-    void OrderShowerSpacePoints(std::vector<art::Ptr<recob::SpacePoint> >& showerspcs,
+    void OrderShowerSpacePointsPerpendicular(std::vector<art::Ptr<recob::SpacePoint> >&
+        showersps, TVector3 const& vertex, TVector3 const& direction) const;
+
+    void OrderShowerSpacePoints(std::vector<art::Ptr<recob::SpacePoint> >& showersps,
         TVector3 const& vertex, TVector3 const& direction) const;
 
-    void OrderShowerSpacePoints( std::vector<art::Ptr<recob::SpacePoint> >&
-				 showersps, TVector3 const& vertex) const;
+    void OrderShowerSpacePoints(std::vector<art::Ptr<recob::SpacePoint> >& showersps,
+        TVector3 const& vertex) const;
 
     TVector3 ShowerCentre(std::vector<art::Ptr<recob::SpacePoint> > const& showersps) const;
 
@@ -78,6 +81,9 @@ class shower::TRACSAlg {
 
     double SpacePointProjection(art::Ptr<recob::SpacePoint> const& sp, TVector3 const& vertex,
         TVector3 const& direction) const;
+
+    double SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const &sp,
+        TVector3 const& vertex, TVector3 const& direction) const;
 
     double SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const& sp, TVector3 const& vertex,
         TVector3 const& direction, double proj) const;

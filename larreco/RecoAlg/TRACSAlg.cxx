@@ -94,12 +94,35 @@ void shower::TRACSAlg::OrderShowerHits(std::vector<art::Ptr<recob::Hit> >& hits,
   return;
 }
 
+//Orders the shower spacepoints with regards to there perpendicular distance from
+//the shower axis.
+void shower::TRACSAlg::OrderShowerSpacePointsPerpendicular(std::vector<art::Ptr<recob::SpacePoint> >&
+    showersps, TVector3 const& vertex, TVector3 const& direction) const {
+
+  std::map<double,art::Ptr<recob::SpacePoint> > OrderedSpacePoints;
+
+  //Loop over the spacepoints and get the pojected distance from the vertex.
+  for(auto const& sp: showersps){
+
+    // Get the perpendicular distance
+    double perp = SpacePointPerpendicular(sp, vertex, direction);
+
+    //Add to the list
+    OrderedSpacePoints[perp] = sp;
+  }
+
+  //Return an ordered list.
+  showersps.clear();
+  for(auto const& sp: OrderedSpacePoints){
+    showersps.push_back(sp.second);
+  }
+  return;
+}
 
 //Orders the shower spacepoints with regards to there prejected length from
 //the shower start position in the shower direction.
 void shower::TRACSAlg::OrderShowerSpacePoints( std::vector<art::Ptr<recob::SpacePoint> >&
-    showersps, TVector3 const& vertex,
-    TVector3 const& direction) const {
+    showersps, TVector3 const& vertex, TVector3 const& direction) const {
 
   std::map<double,art::Ptr<recob::SpacePoint> > OrderedSpacePoints;
 
@@ -322,6 +345,15 @@ double shower::TRACSAlg::SpacePointProjection(const art::Ptr<recob::SpacePoint>&
 }
 
 double shower::TRACSAlg::SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const &sp,
+    TVector3 const& vertex, TVector3 const& direction) const {
+
+  // Get the projection of the spacepoint
+  double proj = shower::TRACSAlg::SpacePointProjection(sp, vertex, direction);
+
+  return shower::TRACSAlg::SpacePointPerpendicular(sp, vertex, direction, proj);
+}
+
+double shower::TRACSAlg::SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const &sp,
     TVector3 const& vertex, TVector3 const& direction,
     double proj) const {
 
@@ -428,10 +460,10 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
   //initialise counter point
   int point = 0;
-  
+
   // Make 3D points for each spacepoint in the shower
   std::unique_ptr<TPolyMarker3D> allPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(spacePoints.size()));
-  
+
 
   if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel) && !ShowerEleHolder.CheckElement("ShowerStartPosition")){
     mf::LogError("Shower3DTrackFinder") << "Direction not set, returning "<< std::endl;
@@ -449,7 +481,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
     //initialise counter point
     int point = 0;
-  
+
     for (auto spacePoint : spacePoints){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint) - showerStartPosition;
       TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint);
@@ -469,13 +501,13 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
       // Calculate the projection of (point-startpoint) along the direction
       double proj = shower::TRACSAlg::SpacePointProjection(spacePoint, showerStartPosition,
-							   showerDirection);
+          showerDirection);
       //double proj = shower::TRACSAlg::SpacePointProjection(spacePoint, TVector3(0,0,0),
       //    showerDirection);
       if (proj>maxProj) {
-	maxProj = proj;
+        maxProj = proj;
       } else if (proj<minProj) {
-	minProj = proj ;
+        minProj = proj ;
       }
 
     } // loop over spacepoints
@@ -488,7 +520,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
     zDirPoints[0] = (showerStartPosition.Z()+minProj*showerDirection.Z());
     zDirPoints[1] = (showerStartPosition.Z()+maxProj*showerDirection.Z());
-  
+
   }
 
   std::unique_ptr<TPolyLine3D> dirPoly = std::unique_ptr<TPolyLine3D> (new TPolyLine3D(2,xDirPoints,yDirPoints,zDirPoints));
@@ -509,7 +541,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
     for (auto spacePoint : trackSpacePoints){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint) - showerStartPosition;
       TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint);
-      
+
       x = pos.X();
       y = pos.Y();
       z = pos.Z();
@@ -637,7 +669,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
     }
   }
 
- 
+
 
   gStyle->SetOptStat(0);
   std::unique_ptr<TH3F> axes = std::unique_ptr<TH3F>(new TH3F("axes","",1,x_min,x_max,1,y_min,y_max,1,z_min,z_max));

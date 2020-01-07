@@ -35,44 +35,44 @@ namespace ShowerRecoTools {
 
   class ShowerDirectionCheater:IShowerTool {
 
-  public:
+    public:
 
-    ShowerDirectionCheater(const fhicl::ParameterSet& pset);
+      ShowerDirectionCheater(const fhicl::ParameterSet& pset);
 
-    ~ShowerDirectionCheater();
+      ~ShowerDirectionCheater();
 
-    //Generic Direction Finder
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event,
-			 reco::shower::ShowerElementHolder& ShowerEleHolder
-			 ) override;
+      //Generic Direction Finder
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder
+          ) override;
 
-  private:
+    private:
 
-    TVector3 ShowerPCAVector(std::vector<art::Ptr<recob::SpacePoint> >& spacePoints_pfp, art::FindManyP<recob::Hit>& fmh, TVector3& ShowerCentre);
-    double RMSShowerGradient(std::vector<art::Ptr<recob::SpacePoint> >& sps, TVector3& ShowerCentre, TVector3& Direction);
-    double CalculateRMS(std::vector<float> perps);
+      TVector3 ShowerPCAVector(std::vector<art::Ptr<recob::SpacePoint> >& spacePoints_pfp, art::FindManyP<recob::Hit>& fmh, TVector3& ShowerCentre);
+      double RMSShowerGradient(std::vector<art::Ptr<recob::SpacePoint> >& sps, TVector3& ShowerCentre, TVector3& Direction);
+      double CalculateRMS(std::vector<float> perps);
 
-    //Algorithm functions
-    shower::TRACSCheatingAlg fTRACSCheatingAlg;
+      //Algorithm functions
+      shower::TRACSCheatingAlg fTRACSCheatingAlg;
 
-    //Services
-    art::ServiceHandle<art::TFileService> tfs;
+      //Services
+      art::ServiceHandle<art::TFileService> tfs;
 
-    //fcl
-    art::InputTag fPFParticleModuleLabel;
-    float fNSegments; //Number of segement to split the shower into the perforam the RMSFlip.
-    bool fRMSFlip;    //Flip the direction by considering the rms.
-    bool fVertexFlip; //Flip the direction by considering the vertex position relative to the center position.
+      //fcl
+      art::InputTag fPFParticleModuleLabel;
+      float fNSegments; //Number of segement to split the shower into the perforam the RMSFlip.
+      bool fRMSFlip;    //Flip the direction by considering the rms.
+      bool fVertexFlip; //Flip the direction by considering the vertex position relative to the center position.
 
-    //TTree Branch variables
-    TTree* Tree;
-    float vertexDotProduct;
-    float rmsGradient;
+      //TTree Branch variables
+      TTree* Tree;
+      float vertexDotProduct;
+      float rmsGradient;
 
-    std::string fShowerStartPositionInputLabel;
-    std::string fTrueParticleInputLabel;
-    std::string fShowerDirectionOuputLabel;
+      std::string fShowerStartPositionInputLabel;
+      std::string fTrueParticleInputLabel;
+      std::string fShowerDirectionOuputLabel;
 
   };
 
@@ -99,9 +99,9 @@ namespace ShowerRecoTools {
   {
   }
 
-  int ShowerDirectionCheater::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle, 
-					       art::Event& Event, 
-					       reco::shower::ShowerElementHolder& ShowerEleHolder){
+  int ShowerDirectionCheater::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
 
 
     const simb::MCParticle* trueParticle;
@@ -109,8 +109,8 @@ namespace ShowerRecoTools {
     //Get the hits from the shower:
     art::Handle<std::vector<recob::PFParticle> > pfpHandle;
     if (!Event.getByLabel(fPFParticleModuleLabel, pfpHandle)){
-      throw cet::exception("ShowerDirectionCheater") 
-	<< "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
+      throw cet::exception("ShowerDirectionCheater")
+        << "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
 
@@ -125,8 +125,8 @@ namespace ShowerRecoTools {
       //Get the clusters
       art::Handle<std::vector<recob::Cluster> > clusHandle;
       if (!Event.getByLabel(fPFParticleModuleLabel, clusHandle)){
-        throw cet::exception("ShowerDirectionCheater") 
-	  << "Could not get the pandora clusters. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
+        throw cet::exception("ShowerDirectionCheater")
+          << "Could not get the pandora clusters. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
         return 1;
       }
       art::FindManyP<recob::Cluster> fmc(pfpHandle, Event, fPFParticleModuleLabel);
@@ -248,7 +248,7 @@ namespace ShowerRecoTools {
       double len = IShowerTool::GetTRACSAlg().SpacePointProjection(sp,ShowerCentre,Direction);
 
       //Get the length to the projection
-      double  len_perp = IShowerTool::GetTRACSAlg().SpacePointPerpendiular(sp,ShowerCentre,Direction,len);
+      double  len_perp = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(sp,ShowerCentre,Direction,len);
 
       int sg_len = round(len/segmentsize);
       //TODO: look at this:

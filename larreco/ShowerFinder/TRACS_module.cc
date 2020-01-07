@@ -74,6 +74,7 @@ class reco::shower::TRACS: public art::EDProducer {
     std::string fShowerDirectionLabel;
     std::string fShowerEnergyLabel;
     std::string fShowerLengthLabel;
+    std::string fShowerOpeningAngleLabel;
     std::string fShowerdEdxLabel;
     std::string fShowerBestPlaneLabel;
 
@@ -143,12 +144,13 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
 
   //Initialise the other paramters.
   fPFParticleModuleLabel      = pset.get<art::InputTag>("PFParticleModuleLabel","pandora");
-  fShowerStartPositionLabel = pset.get<std::string  >("ShowerStartPositionLabel");
-  fShowerDirectionLabel     = pset.get<std::string  >("ShowerDirectionLabel");
-  fShowerEnergyLabel        = pset.get<std::string  >("ShowerEnergyLabel");
-  fShowerLengthLabel        = pset.get<std::string  >("ShowerLengthLabel");
-  fShowerdEdxLabel          = pset.get<std::string  >("ShowerdEdxLabel");
-  fShowerBestPlaneLabel     = pset.get<std::string  >("ShowerBestPlaneLabel");
+  fShowerStartPositionLabel   = pset.get<std::string  >("ShowerStartPositionLabel");
+  fShowerDirectionLabel       = pset.get<std::string  >("ShowerDirectionLabel");
+  fShowerEnergyLabel          = pset.get<std::string  >("ShowerEnergyLabel");
+  fShowerLengthLabel          = pset.get<std::string  >("ShowerLengthLabel");
+  fShowerOpeningAngleLabel    = pset.get<std::string  > ("ShowerOpeningAngleLabel");
+  fShowerdEdxLabel            = pset.get<std::string  >("ShowerdEdxLabel");
+  fShowerBestPlaneLabel       = pset.get<std::string  >("ShowerBestPlaneLabel");
   fSecondInteration           = pset.get<bool         >("SecondInteration",false);
   fAllowPartialShowers        = pset.get<bool         >("AllowPartialShowers",false);
   fVerbose                    = pset.get<bool         >("Verbose",false);
@@ -306,6 +308,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     std::vector<double>                ShowerEnergy         = {-999,-999,-999};
     std::vector<double>                ShowerdEdx           = {-999,-999,-999};
     double                             ShowerLength         = -999;
+    double                             ShowerOpeningAngle   = -999;
 
     int                                BestPlane               = -999;
     TVector3                           ShowerStartPositionErr  = {-999,-999,-999};
@@ -320,6 +323,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     if(selement_holder.CheckElement(fShowerdEdxLabel))             err += selement_holder.GetElementAndError(fShowerdEdxLabel,ShowerdEdx,ShowerdEdxErr  );
     if(selement_holder.CheckElement(fShowerBestPlaneLabel))        err += selement_holder.GetElement(fShowerBestPlaneLabel,BestPlane);
     if(selement_holder.CheckElement(fShowerLengthLabel))           err += selement_holder.GetElement(fShowerLengthLabel,ShowerLength);
+    if(selement_holder.CheckElement(fShowerOpeningAngleLabel))     err += selement_holder.GetElement(fShowerOpeningAngleLabel,ShowerOpeningAngle);
 
     if(err){
       throw cet::exception("TRACS")  << "Error in TRACS Module. A Check on a shower property failed " << std::endl;
@@ -332,6 +336,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       std::cout<<"Shower dEdx: size: "<<ShowerdEdx.size()<<" Plane 0: "<<ShowerdEdx.at(0)<<" Plane 1: "<<ShowerdEdx.at(1)<<" Plane 2: "<<ShowerdEdx.at(2)<<std::endl;
       std::cout<<"Shower Energy: size: "<<ShowerEnergy.size()<<" Plane 0: "<<ShowerEnergy.at(0)<<" Plane 1: "<<ShowerEnergy.at(1)<<" Plane 2: "<<ShowerEnergy.at(2)<<std::endl;
       std::cout<<"Shower Length: " << ShowerLength << std::endl;
+      std::cout<<"Shower Opening Angle: " << ShowerOpeningAngle << std::endl;
       std::cout<<"Shower Best Plane: "<<BestPlane<<std::endl;
 
       //Print what has been created in the shower
@@ -339,7 +344,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     }
 
     //Make the shower
-    recob::Shower shower = recob::Shower(ShowerDirection, ShowerDirectionErr,ShowerStartPosition, ShowerDirectionErr,ShowerEnergy,ShowerEnergyErr,ShowerdEdx, ShowerdEdxErr, BestPlane,util::kBogusI, ShowerLength, -999);
+    recob::Shower shower = recob::Shower(ShowerDirection, ShowerDirectionErr,ShowerStartPosition, ShowerDirectionErr,ShowerEnergy,ShowerEnergyErr,ShowerdEdx, ShowerdEdxErr, BestPlane,util::kBogusI, ShowerLength, ShowerOpeningAngle);
     selement_holder.SetElement(shower,"shower");
     ++shower_iter;
     art::Ptr<recob::Shower> ShowerPtr = this->GetProducedElementPtr<recob::Shower>("shower",selement_holder);
