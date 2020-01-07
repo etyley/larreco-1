@@ -682,8 +682,6 @@ std::vector<art::Ptr<recob::Hit> > shower::EMShowerAlg::FindOrderOfHits(std::vec
   // Find a rough shower 'direction'
   TVector2 direction = ShowerDirection(hits);
 
-  std::cout << "direction.X(): " << direction.X() << " Y: " <<  direction.Y() << std::endl; 
-
   if (perpendicular)
     direction = direction.Rotate(TMath::Pi()/2);
 
@@ -1602,7 +1600,6 @@ void shower::EMShowerAlg::FindInitialTrackHits(std::vector<art::Ptr<recob::Hit> 
   std::vector<double> tfit;
   std::vector<double> cfit;
 
-  std::cout<<"fNfitpass "<<fNfitpass<<std::endl;
 
   for (size_t i = 0; i<fNfitpass; ++i){
 
@@ -1650,7 +1647,6 @@ void shower::EMShowerAlg::FindInitialTrackHits(std::vector<art::Ptr<recob::Hit> 
     cfit.clear();
   }
 
-  std::cout<<"TrackHits: "<<trackHits.size()<<std::endl;
 }
 
 

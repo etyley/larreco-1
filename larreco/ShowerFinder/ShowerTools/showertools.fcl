@@ -24,6 +24,7 @@ tool_type: ShowerPCADirection
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              ShowerDirectionOutputLabel: "ShowerDirection"
              ShowerCentreOutputLabel: "ShowerCentre"
+             ShowerPCAOutputLabel: "ShowerPCA"
 }
 
 showerlinearenergy:{
@@ -111,7 +112,7 @@ tool_type: Shower3DTrackHitFinder
              ScaleWithEnergy:      false #Vary the parameters as function of E
              EnergyResidualConst:  -0.1   #Linear dimensionless value to vary the energy with
              EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy w
-             InitialTrackLengthInputLabel: "InitialTrackLength" 
+             InitialTrackLengthInputLabel: "InitialTrackLength"
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              ShowerDirectionInputLabel: "ShowerDirection"
@@ -322,10 +323,10 @@ tool_type: ShowerSlidingStandardCalodEdx
              EnergyLengthConst:    0.1   #Linear dimensionless value to vary the energy with
              PFParticleModuleLabel: "pandora"
              ShowerEnergyInputLabel: "ShowerEnergy"
-             ShowerStartPositionInputLabel: "ShowerStartPosition" 
-             InitialTrackSpacePointsInputLabel: "InitialTrackSpacePoints" 
+             ShowerStartPositionInputLabel: "ShowerStartPosition"
+             InitialTrackSpacePointsInputLabel: "InitialTrackSpacePoints"
              InitialTrackInputLabel: "InitialTrack"
-             ShowerdEdxOuputLabel: "ShowerdEdx" 
+             ShowerdEdxOuputLabel: "ShowerdEdx"
              ShowerBestPlaneOutputLabel: "ShowerBestPlane"
              ShowerdEdxVecOuputLabel: "ShowerdEdxVec"
 }
@@ -346,12 +347,12 @@ tool_type: ShowerResidualTrackHitFinder
              EnergyResidualConst:   -0.1
              EnergyLengthConst:     0.1
              MakeTrackSeed:         true
-             StartDistanceCut:      0 
+             StartDistanceCut:      0
              DistanceCut:           999
              ShowerEnergyInputLabel: "ShowerEnergy"
              ShowerStartPositionInputLabel: "ShowerStartPosition"
              InitialTrackHitsOutputLabel: "InitialTrackHits"
-             InitialTrackSpacePointsOutputLabel: "InitialTrackSpacePoints" 
+             InitialTrackSpacePointsOutputLabel: "InitialTrackSpacePoints"
              ShowerDirectionInputLabel: "ShowerDirection"
 }
 
@@ -362,7 +363,7 @@ showerpcapropergationstartposition:{
     ShowerStartPositionOutputLabel: "ShowerStartPosition"
     ShowerCentreInputLabel: "ShowerCentre"
     ShowerDirectionInputLabel: "ShowerDirection"
-    ShowerStartPositionInputLabel: "ShowerStartPosition" 
+    ShowerStartPositionInputLabel: "ShowerStartPosition"
 }
 
 showerbayeslikelihooddedxcutting:{
