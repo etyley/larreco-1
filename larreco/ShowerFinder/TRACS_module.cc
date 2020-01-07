@@ -18,7 +18,7 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/Handle.h"
 #include "art/Framework/Core/EDProducer.h"
-#include "art/Utilities/make_tool.h" 
+#include "art/Utilities/make_tool.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 #include "canvas/Persistency/Common/Ptr.h"
 #include "canvas/Persistency/Common/FindManyP.h"
@@ -37,7 +37,7 @@
 //Root Includes
 #include "TVector3.h"
 
-//C++ Includes 
+//C++ Includes
 #include <vector>
 
 namespace reco {
@@ -46,64 +46,64 @@ namespace reco {
   }
 }
 
-//Class 
+//Class
 
 class reco::shower::TRACS: public art::EDProducer {
-public:
+  public:
 
-  TRACS(fhicl::ParameterSet const& pset);
+    TRACS(fhicl::ParameterSet const& pset);
 
-private:
+  private:
 
-  void produce(art::Event& evt);
+    void produce(art::Event& evt);
 
-  //This function returns the art::Ptr to the data object InstanceName. In the background it uses the PtrMaker which requires the element index of 
-  //the unique ptr (iter). 
-  template <class T >
-  art::Ptr<T> GetProducedElementPtr(std::string InstanceName, reco::shower::ShowerElementHolder& ShowerEleHolder, int iter=-1);
+    //This function returns the art::Ptr to the data object InstanceName. In the background it uses the PtrMaker which requires the element index of
+    //the unique ptr (iter).
+    template <class T >
+      art::Ptr<T> GetProducedElementPtr(std::string InstanceName, reco::shower::ShowerElementHolder& ShowerEleHolder, int iter=-1);
 
 
-  //fcl object names 
-  art::InputTag fPFParticleModuleLabel;
-  bool          fSecondInteration;
-  bool          fAllowPartialShowers;
-  bool          fVerbose; 
+    //fcl object names
+    art::InputTag fPFParticleModuleLabel;
+    bool          fSecondInteration;
+    bool          fAllowPartialShowers;
+    bool          fVerbose;
 
-  //tool tags which calculate the characteristics of the shower 
-  std::string fShowerStartPositionLabel;
-  std::string fShowerDirectionLabel;
-  std::string fShowerEnergyLabel;
-  std::string fShowerLengthLabel;
-  std::string fShowerdEdxLabel;
-  std::string fShowerBestPlaneLabel;
+    //tool tags which calculate the characteristics of the shower
+    std::string fShowerStartPositionLabel;
+    std::string fShowerDirectionLabel;
+    std::string fShowerEnergyLabel;
+    std::string fShowerLengthLabel;
+    std::string fShowerdEdxLabel;
+    std::string fShowerBestPlaneLabel;
 
-  //fcl tools
-  std::vector<std::unique_ptr<ShowerRecoTools::IShowerTool> > fShowerTools;
-  std::vector<std::string>                                    fShowerToolNames;
+    //fcl tools
+    std::vector<std::unique_ptr<ShowerRecoTools::IShowerTool> > fShowerTools;
+    std::vector<std::string>                                    fShowerToolNames;
 
-  //map to the unique ptrs to
-  reco::shower::ShowerProduedPtrsHolder uniqueproducerPtrs;
+    //map to the unique ptrs to
+    reco::shower::ShowerProduedPtrsHolder uniqueproducerPtrs;
 
 };
 
-//This function returns the art::Ptr to the data object InstanceName. In the background it uses the PtrMaker which requires the element index of 
-//the unique ptr (iter). 
+//This function returns the art::Ptr to the data object InstanceName. In the background it uses the PtrMaker which requires the element index of
+//the unique ptr (iter).
 template <class T >
 art::Ptr<T> reco::shower::TRACS::GetProducedElementPtr(std::string InstanceName, reco::shower::ShowerElementHolder& ShowerEleHolder, int iter){
-  
+
   bool check_element = ShowerEleHolder.CheckElement(InstanceName);
   if(!check_element){
     throw cet::exception("TRACS") << "To get a element that does not exist" << std::endl;
     return art::Ptr<T>();
   }
-  
+
   bool check_ptr = uniqueproducerPtrs.CheckUniqueProduerPtr(InstanceName);
   if(!check_ptr){
     throw cet::exception("TRACS") << "Tried to get a ptr that does not exist" << std::endl;
     return art::Ptr<T>();
   }
-  
-  
+
+
   //Get the number of the shower we are on.
   int index;
   if(iter != -1){
@@ -123,7 +123,7 @@ art::Ptr<T> reco::shower::TRACS::GetProducedElementPtr(std::string InstanceName,
 reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
   EDProducer{pset}
 {
-  //Intialise the tools 
+  //Intialise the tools
   auto const tool_psets = pset.get<std::vector<fhicl::ParameterSet>>("ShowerFinderTools");
   for (auto const& tool_pset : tool_psets) {
     fShowerTools.push_back(art::make_tool<ShowerRecoTools::IShowerTool>(tool_pset));
@@ -132,9 +132,9 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
     std::cout<< "Tools List: " << tool_name << std::endl;
   }
 
-  //  Initialise the EDProducer ptr in the tools 
+  //  Initialise the EDProducer ptr in the tools
   std::vector<std::string> SetupTools;
-  for(unsigned int i=0; i<fShowerTools.size(); ++i){ 
+  for(unsigned int i=0; i<fShowerTools.size(); ++i){
     if(std::find(SetupTools.begin(), SetupTools.end(), fShowerToolNames[i]) != SetupTools.end()){continue;}
     fShowerTools[i]->SetPtr(&producesCollector());
     fShowerTools[i]->InitaliseProducerPtr(uniqueproducerPtrs);
@@ -169,10 +169,10 @@ reco::shower::TRACS::TRACS(fhicl::ParameterSet const& pset) :
   uniqueproducerPtrs.PrintPtrs();
 
 }
-    
+
 void reco::shower::TRACS::produce(art::Event& evt) {
 
-  //Ptr makers for the products 
+  //Ptr makers for the products
   uniqueproducerPtrs.SetPtrMakers(evt);
 
   //Get the PFParticles
@@ -184,14 +184,14 @@ void reco::shower::TRACS::produce(art::Event& evt) {
   else {
     throw cet::exception("TRACS") << "pfps not loaded. Maybe you got the module label wrong?" << std::endl;
   }
- 
+
   //Handle to access the pandora hits assans
   art::Handle<std::vector<recob::Cluster> > clusterHandle;
   if (!evt.getByLabel(fPFParticleModuleLabel,clusterHandle)){
     throw cet::exception("TRACS") << "pfp clusters are not loaded." << std::endl;
   }
 
-  //Get the assoications to hits, clusters and spacespoints 
+  //Get the assoications to hits, clusters and spacespoints
   art::FindManyP<recob::Hit> fmh(clusterHandle, evt, fPFParticleModuleLabel);
   art::FindManyP<recob::Cluster> fmcp(pfpHandle, evt, fPFParticleModuleLabel);
   art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, evt, fPFParticleModuleLabel);
@@ -206,13 +206,13 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     throw cet::exception("TRACS") << "Find many spacepoints is not valid." << std::endl;
   }
 
-  //Holder to pass to the functions, contains the 6 properties of the shower 
+  //Holder to pass to the functions, contains the 6 properties of the shower
   // - Start Poistion
   // - Direction
   // - Initial Track
   // - Initial Track Hits
-  // - Energy 
-  // - dEdx 
+  // - Energy
+  // - dEdx
   reco::shower::ShowerElementHolder selement_holder;
 
   int shower_iter = 0;
@@ -225,7 +225,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     //loop only over showers.
     if(pfp->PdgCode() != 11 && pfp->PdgCode() != 22){continue;}
 
-    //Calculate the shower properties 
+    //Calculate the shower properties
     //Loop over the shower tools
     int err = 0;
     unsigned int i=0;
@@ -237,8 +237,8 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       err = fShowerTool->RunShowerTool(pfp,evt,selement_holder,evd_disp_append);
 
       if(err){
-	mf::LogError("TRACS") << "Error in shower tool: " << fShowerToolNames[i]  << " with code: " << err << std::endl;
-	break;
+        mf::LogError("TRACS") << "Error in shower tool: " << fShowerToolNames[i]  << " with code: " << err << std::endl;
+        break;
       }
       ++i;
     }
@@ -247,16 +247,16 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     if(fSecondInteration){
 
       for(auto const& fShowerTool: fShowerTools){
-	//Calculate the metric
-	std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(1) + "_" + this->moduleDescription().moduleLabel();
+        //Calculate the metric
+        std::string evd_disp_append = fShowerToolNames[i]+"_iteration"+std::to_string(1) + "_" + this->moduleDescription().moduleLabel();
 
-	err = fShowerTool->RunShowerTool(pfp,evt,selement_holder,evd_disp_append);
-      
-	if(err){
-	  mf::LogError("TRACS") << "Error in shower tool: " << fShowerToolNames[i]  << " with code: " << err << std::endl;
-	  break;
-	}
-	++i;
+        err = fShowerTool->RunShowerTool(pfp,evt,selement_holder,evd_disp_append);
+
+        if(err){
+          mf::LogError("TRACS") << "Error in shower tool: " << fShowerToolNames[i]  << " with code: " << err << std::endl;
+          break;
+        }
+        ++i;
       }
     }
 
@@ -269,38 +269,38 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     //If we are are not allowing partial shower check all the products to make the shower are correctly set
     if(!fAllowPartialShowers){
       if(!selement_holder.CheckElement("ShowerStartPosition")){
-	mf::LogError("TRACS") << "The start position is not set in the element holder. bailing" << std::endl;
-	continue;
+        mf::LogError("TRACS") << "The start position is not set in the element holder. bailing" << std::endl;
+        continue;
       }
       if(!selement_holder.CheckElement("ShowerDirection")){
-	mf::LogError("TRACS") << "The direction is not set in the element holder. bailing" << std::endl;
-	continue;
+        mf::LogError("TRACS") << "The direction is not set in the element holder. bailing" << std::endl;
+        continue;
       }
       if(!selement_holder.CheckElement("ShowerEnergy")){
-	mf::LogError("TRACS") << "The energy is not set in the element holder. bailing" << std::endl;
-	continue;
+        mf::LogError("TRACS") << "The energy is not set in the element holder. bailing" << std::endl;
+        continue;
       }
       if(!selement_holder.CheckElement("ShowerdEdx")){
-	mf::LogError("TRACS") << "The dEdx is not set in the element holder. bailing" << std::endl;
+        mf::LogError("TRACS") << "The dEdx is not set in the element holder. bailing" << std::endl;
         continue;
       }
 
       //Check All of the products that have been asked to be checked.
       bool elements_are_set = selement_holder.CheckAllElementTags();
       if(!elements_are_set){
-	mf::LogError("TRACS") << "Not all the elements in the property holder which should be set are not. Bailing. " << std::endl; 
-	continue;
+        mf::LogError("TRACS") << "Not all the elements in the property holder which should be set are not. Bailing. " << std::endl;
+        continue;
       }
-      
-      ///Check all the producers 
+
+      ///Check all the producers
       bool producers_are_set = uniqueproducerPtrs.CheckAllProducedElements(selement_holder);
       if(!producers_are_set){
-	mf::LogError("TRACS") << "Not all the elements in the property holder which are produced are not set. Bailing. " << std::endl; 
-	continue;
+        mf::LogError("TRACS") << "Not all the elements in the property holder which are produced are not set. Bailing. " << std::endl;
+        continue;
       }
     }
 
-    //Get the properties 
+    //Get the properties
     TVector3                           ShowerStartPosition  = {-999,-999,-999};
     TVector3                           ShowerDirection      = {-999,-999,-999};
     std::vector<double>                ShowerEnergy         = {-999,-999,-999};
@@ -312,7 +312,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     TVector3                           ShowerDirectionErr      = {-999,-999,-999};
     std::vector<double>                ShowerEnergyErr         = {-999,-999,-999};
     std::vector<double>                ShowerdEdxErr           = {-999,-999,-999};
-    
+
     err = 0;
     if(selement_holder.CheckElement(fShowerStartPositionLabel))    err += selement_holder.GetElementAndError(fShowerStartPositionLabel,ShowerStartPosition,ShowerStartPositionErr);
     if(selement_holder.CheckElement(fShowerDirectionLabel))        err += selement_holder.GetElementAndError(fShowerDirectionLabel,ShowerDirection,ShowerDirectionErr);
@@ -338,15 +338,15 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       selement_holder.PrintElements();
     }
 
-    //Make the shower 
+    //Make the shower
     recob::Shower shower = recob::Shower(ShowerDirection, ShowerDirectionErr,ShowerStartPosition, ShowerDirectionErr,ShowerEnergy,ShowerEnergyErr,ShowerdEdx, ShowerdEdxErr, BestPlane,util::kBogusI, ShowerLength, -999);
     selement_holder.SetElement(shower,"shower");
     ++shower_iter;
     art::Ptr<recob::Shower> ShowerPtr = this->GetProducedElementPtr<recob::Shower>("shower",selement_holder);
 
-    //Associate the pfparticle 
+    //Associate the pfparticle
     uniqueproducerPtrs.AddSingle<art::Assns<recob::Shower, recob::PFParticle>>(ShowerPtr,pfp,"pfShowerAssociationsbase");
-        
+
     //Get the associated hits,clusters and spacepoints
     std::vector<art::Ptr<recob::Cluster> >    showerClusters    = fmcp.at(pfp.key());
     std::vector<art::Ptr<recob::SpacePoint> > showerSpacePoints = fmspp.at(pfp.key());
@@ -354,13 +354,13 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     //Add the hits for each "cluster"
     for(auto const& cluster: showerClusters){
 
-      //Associate the clusters 
+      //Associate the clusters
       std::vector<art::Ptr<recob::Hit> > ClusterHits = fmh.at(cluster.key());
       uniqueproducerPtrs.AddSingle<art::Assns<recob::Shower, recob::Cluster>>(ShowerPtr,cluster,"clusterAssociationsbase");
-          
+
       //Associate the hits
       for(auto const& hit: ClusterHits){
-	uniqueproducerPtrs.AddSingle<art::Assns<recob::Shower, recob::Hit>>(ShowerPtr, hit,"hitAssociationsbase");
+        uniqueproducerPtrs.AddSingle<art::Assns<recob::Shower, recob::Hit>>(ShowerPtr, hit,"hitAssociationsbase");
       }
     }
 
@@ -371,21 +371,21 @@ void reco::shower::TRACS::produce(art::Event& evt) {
 
     //Loop over the tool data products and add them.
     uniqueproducerPtrs.AddDataProducts(selement_holder);
-		
+
     //AddAssociations
     int assn_err = 0;
     for(auto const& fShowerTool: fShowerTools){
-      assn_err += fShowerTool->AddAssociations(evt,selement_holder);
+      assn_err += fShowerTool->AddAssociations(pfp, evt,selement_holder);
     }
     if(!fAllowPartialShowers && assn_err > 0){
-      mf::LogError("TRACS") << "A association failed and you are not allowing partial showers. The event will not be added to the event " << std::endl; 
+      mf::LogError("TRACS") << "A association failed and you are not allowing partial showers. The event will not be added to the event " << std::endl;
       continue;
     }
 
     //Reset the showerproperty holder.
     selement_holder.ClearAll();
   }
-  
+
   //Put everything in the event.
   uniqueproducerPtrs.MoveAllToEvent(evt);
 

@@ -73,7 +73,7 @@ namespace ShowerRecoTools{
       }
 
       //End function so the user can add associations
-      virtual int  AddAssociations(art::Event& Event,
+      virtual int  AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
           reco::shower::ShowerElementHolder& ShowerEleHolder){return 0;}
 
     protected:

@@ -44,7 +44,7 @@ namespace ShowerRecoTools {
       void InitialiseProducers() override;
 
       //Function to add the assoctions
-      int AddAssociations(art::Event& Event,
+      int AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
           reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
       //prehaps you want a fcl parameter.
@@ -153,7 +153,7 @@ namespace ShowerRecoTools {
     return 0;
   }
 
-  int ShowerExampleTool::AddAssociations(art::Event& Event,
+  int ShowerExampleTool::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder
       ){
     //Here you add elements to associations defined. You can get the art::Ptrs by  GetProducedElementPtr<T>. Then you can add single like a usally association using AddSingle<assn<T>. Assn below.

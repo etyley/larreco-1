@@ -57,7 +57,7 @@ namespace ShowerRecoTools {
       void InitialiseProducers() override;
 
       //Function to add the assoctions
-      int AddAssociations(art::Event& Event,
+      int AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
           reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
       // Define standard art tool interface
@@ -112,14 +112,13 @@ namespace ShowerRecoTools {
   {
     InitialiseProduct<std::vector<recob::PCAxis> >(fShowerPCAOutputLabel);
     InitialiseProduct<art::Assns<recob::Shower, recob::PCAxis> >("ShowerPCAxisAssn");
-    InitialiseProduct<art::Assns<recob::Shower, recob::PCAxis> >("PFParticlePCAxisAssn");
+    InitialiseProduct<art::Assns<recob::PFParticle, recob::PCAxis> >("PFParticlePCAxisAssn");
   }
 
   int ShowerPCADirection::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
       art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
 
-    std::cout<<"Test -0"<<std::endl;
     // Get the assocated pfParicle vertex PFParticles
     art::Handle<std::vector<recob::PFParticle> > pfpHandle;
     if (!Event.getByLabel(fPFParticleModuleLabel, pfpHandle)){
@@ -152,18 +151,14 @@ namespace ShowerRecoTools {
     if(spacePoints_pfp.size() == 0){return 0;}
 
     //Find the PCA vector
-    std::cout<<"Test 0"<<std::endl;
     TVector3 ShowerCentre;
     recob::PCAxis PCA = CalculateShowerPCA(spacePoints_pfp,fmh,ShowerCentre);
     TVector3 PCADirection = GetPCAxisVector(PCA);
-    std::cout<<"Test 1"<<std::endl;
 
     //Save the shower the center for downstream tools
     TVector3 ShowerCentreErr = {-999,-999,-999};
     ShowerEleHolder.SetElement(ShowerCentre,ShowerCentreErr,fShowerCentreOutputLabel);
     ShowerEleHolder.SetElement(PCA, fShowerPCAOutputLabel);
-
-    std::cout<<"Putting PCA in Element Holder"<<std::endl;
 
     //Check if we are pointing the correct direction or not, First try the start position
     if(fUseStartPosition){
@@ -346,10 +341,8 @@ namespace ShowerRecoTools {
   }
 
 
-  int ShowerPCADirection::AddAssociations(art::Event& Event,
+  int ShowerPCADirection::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
-
-    std::cout<<"Adding PCA Assn"<<std::endl;
 
     //First check the element has been set
     if(!ShowerEleHolder.CheckElement(fShowerPCAOutputLabel)){
@@ -361,8 +354,6 @@ namespace ShowerRecoTools {
 
     const art::Ptr<recob::PCAxis> pcaPtr = GetProducedElementPtr<recob::PCAxis>(fShowerPCAOutputLabel, ShowerEleHolder, ptrSize-1);
     const art::Ptr<recob::Shower> showerPtr = GetProducedElementPtr<recob::Shower>("shower", ShowerEleHolder);
-
-    art::Ptr<recob::PFParticle> pfpPtr;
 
     AddSingle<art::Assns<recob::Shower, recob::PCAxis> >(showerPtr,pcaPtr,"ShowerPCAxisAssn");
     AddSingle<art::Assns<recob::PFParticle, recob::PCAxis> >(pfpPtr,pcaPtr,"PFParticlePCAxisAssn");

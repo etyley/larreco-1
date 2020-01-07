@@ -52,7 +52,7 @@ namespace ShowerRecoTools{
     void InitialiseProducers() override;
 
     //Function to add the assoctions
-    int AddAssociations(art::Event& Event,
+    int AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
 			reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
 
@@ -264,7 +264,7 @@ namespace ShowerRecoTools{
   }
 
 
-  int ShowerPMATrackFinder::AddAssociations(art::Event& Event,
+  int ShowerPMATrackFinder::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder
       ){
 

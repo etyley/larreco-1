@@ -36,7 +36,7 @@ namespace ShowerRecoTools {
     private:
 
       //Function to add the assoctions
-      int AddAssociations(art::Event& Event,
+      int AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
           reco::shower::ShowerElementHolder& ShowerEleHolder) override;
   };
 
@@ -51,7 +51,7 @@ namespace ShowerRecoTools {
     return 0;
   }
 
-  int ShowerGenericTool::AddAssociations(art::Event& Event,
+  int ShowerGenericTool::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder
       ){
     return 0;
