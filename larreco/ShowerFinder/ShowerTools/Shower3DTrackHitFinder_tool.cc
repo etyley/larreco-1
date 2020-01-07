@@ -219,7 +219,7 @@ namespace ShowerRecoTools{
       // from "axis" of shower
       double proj = IShowerTool::GetTRACSAlg().SpacePointProjection(spacePoint,
           showerStartPosition, showerDirection);
-      double perp = IShowerTool::GetTRACSAlg().SpacePointPerpendiular(spacePoint,
+      double perp = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(spacePoint,
           showerStartPosition, showerDirection, proj);
 
       if (fForwardHitsOnly){

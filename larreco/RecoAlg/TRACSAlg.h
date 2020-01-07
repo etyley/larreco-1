@@ -79,7 +79,7 @@ class shower::TRACSAlg {
     double SpacePointProjection(art::Ptr<recob::SpacePoint> const& sp, TVector3 const& vertex,
         TVector3 const& direction) const;
 
-    double SpacePointPerpendiular(art::Ptr<recob::SpacePoint> const& sp, TVector3 const& vertex,
+    double SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const& sp, TVector3 const& vertex,
         TVector3 const& direction, double proj) const;
 
     void DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,

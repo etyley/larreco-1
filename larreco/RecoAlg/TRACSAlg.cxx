@@ -321,7 +321,7 @@ double shower::TRACSAlg::SpacePointProjection(const art::Ptr<recob::SpacePoint>&
   return projLen;
 }
 
-double shower::TRACSAlg::SpacePointPerpendiular(art::Ptr<recob::SpacePoint> const &sp,
+double shower::TRACSAlg::SpacePointPerpendicular(art::Ptr<recob::SpacePoint> const &sp,
     TVector3 const& vertex, TVector3 const& direction,
     double proj) const {
 

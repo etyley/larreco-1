@@ -228,7 +228,7 @@ namespace ShowerRecoTools {
       double proj = IShowerTool::GetTRACSAlg().SpacePointProjection(sp,ShowerCentre,Direction);
 
       //Get the length to the projection
-      double perp = IShowerTool::GetTRACSAlg().SpacePointPerpendiular(sp,ShowerCentre,Direction,proj);
+      double perp = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(sp,ShowerCentre,Direction,proj);
 
       int segment = round(proj/segmentsize);
       len_segment_map[segment].push_back(perp);
