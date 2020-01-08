@@ -402,6 +402,7 @@ showerpcaeigenvaluelength:{
     ShowerPCAInputLabel: "ShowerPCA"
     ShowerLengthOuputLabel: "ShowerLength"
     ShowerOpeningAngleOuputLabel: "ShowerOpeningAngle"
+    NSigma: 3
 }
 
 END_PROLOG

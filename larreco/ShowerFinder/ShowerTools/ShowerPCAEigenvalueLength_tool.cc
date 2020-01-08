@@ -41,6 +41,7 @@ namespace ShowerRecoTools {
       std::string fShowerPCAInputLabel;
       std::string fShowerLengthOuputLabel;
       std::string fShowerOpeningAngleOuputLabel;
+      float fNSigma;
   };
 
 
@@ -49,7 +50,8 @@ namespace ShowerRecoTools {
     fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
     fShowerPCAInputLabel(pset.get<std::string>("ShowerPCAInputLabel")),
     fShowerLengthOuputLabel(pset.get<std::string>("ShowerLengthOuputLabel")),
-    fShowerOpeningAngleOuputLabel(pset.get<std::string>("ShowerOpeningAngleOuputLabel"))
+    fShowerOpeningAngleOuputLabel(pset.get<std::string>("ShowerOpeningAngleOuputLabel")),
+    fNSigma(pset.get<float>("NSigma"))
   {
   }
 
@@ -67,18 +69,21 @@ namespace ShowerRecoTools {
 
     const double* eigenValues = PCA.getEigenValues();
 
-    // The PCA eigenvalues give the deviance of space ponits around the center
-    // Call the length 6 x std. dev. along primary eigenvalues
-    // Call the width 6 x std. dev. along secondary eigenvalues
+    // The PCA eigenvalues give the deviance of space points around the center
+    // Take the sqrt to get std. dev and take fNSigma in each direction:
+    // Call the length fNSigma x 2 x std. dev. along primary eigenvalues
+    // Call the width fNSigma x 2 x std. dev. along secondary eigenvalues
+
+    //TODO: Actually calculate the erros (Maybe fNSigma+-1Sigma?)
 
     //Find the length
     double primaryEigenValue = (eigenValues)[0];
-    double ShowerLength = TMath::Sqrt(primaryEigenValue) * 6;
+    double ShowerLength = TMath::Sqrt(primaryEigenValue) * 2 * fNSigma;
     double ShowerLengthError = -9999;
 
     //Find the width of the shower
     double secondaryEigenValue = (eigenValues)[1];
-    double ShowerWidth = TMath::Sqrt(secondaryEigenValue) * 6;
+    double ShowerWidth = TMath::Sqrt(secondaryEigenValue) * 2 * fNSigma;
 
     double ShowerAngle = atan(ShowerWidth/ShowerLength);
     double ShowerAngleError = -9999;
