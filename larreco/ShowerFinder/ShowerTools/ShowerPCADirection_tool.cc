@@ -30,11 +30,11 @@
 
 //C++ Includes
 #include <iostream>
+#include <Eigen/Dense>
 
 //Root Includes
 #include "TVector3.h"
 #include "TMath.h"
-#include "TPrincipal.h"
 
 namespace ShowerRecoTools {
 
@@ -270,10 +270,14 @@ namespace ShowerRecoTools {
   //Function to calculate the shower direction using a charge weight 3D PCA calculation.
   recob::PCAxis ShowerPCADirection::CalculateShowerPCA(std::vector<art::Ptr<recob::SpacePoint> >& sps, art::FindManyP<recob::Hit>& fmh, TVector3& ShowerCentre){
 
-    //Initialise the the PCA.
-    TPrincipal *pca = new TPrincipal(3,"");
-
     float TotalCharge = 0;
+    float sumWeights = 0;
+    float xx = 0;
+    float yy = 0;
+    float zz = 0;
+    float xy = 0;
+    float xz = 0;
+    float yz = 0;
 
     //Get the Shower Centre
     ShowerCentre = IShowerTool::GetTRACSAlg().ShowerCentre(sps, fmh, TotalCharge);
@@ -303,63 +307,77 @@ namespace ShowerRecoTools {
         wht *= TMath::Sqrt(Charge/TotalCharge);
       }
 
-      double sp_coord[3];
-      sp_coord[0] = sp_position.X()*wht;
-      sp_coord[1] = sp_position.Y()*wht;
-      sp_coord[2] = sp_position.Z()*wht;
+      xx += sp_position.X() * sp_position.X() * wht;
+      yy += sp_position.Y() * sp_position.Y() * wht;
+      zz += sp_position.Z() * sp_position.Z() * wht;
+      xy += sp_position.X() * sp_position.Y() * wht;
+      xz += sp_position.X() * sp_position.Z() * wht;
+      yz += sp_position.Y() * sp_position.Z() * wht;
+      sumWeights += wht;
 
-      //Add to the PCA
-      pca->AddRow(sp_coord);
     }
 
-    //Evaluate the PCA
-    pca->MakePrincipals();
+    // Using Eigen package
+    Eigen::Matrix3f matrix;
 
-    const TVectorD* rootEigenValues = pca->GetEigenValues();
-    const TMatrixD* rootEigenVectors = pca->GetEigenVectors();
+    // Construct covariance matrix
+    matrix <<
+      xx, xy, xz,
+      xy, yy, yz,
+      xz, yz ,zz;
+
+    // Normalise from the sum of weights
+    matrix /= sumWeights;
+
+    // Run the PCA
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigenMatrix(matrix);
+
+    Eigen::Vector3f eigenValuesVector = eigenMatrix.eigenvalues();
+    Eigen::Matrix3f eigenVectorsMatrix = eigenMatrix.eigenvectors();
 
     // Put in the required form for a recob::PCAxis
-    const bool svdOk = true;
+    const bool svdOk = true; //TODO: Should probably think about this a bit more
     const int nHits = sps.size();
-    const double eigenValues[3] = {(*rootEigenValues)[0], (*rootEigenValues)[1], (*rootEigenValues)[2]};
+    // For some reason eigen sorts the eigenvalues from smallest to largest, reverse it
+    const double eigenValues[3] = {eigenValuesVector(2), eigenValuesVector(1), eigenValuesVector(0)};
     std::vector<std::vector<double> > eigenVectors = {
-      { (*rootEigenVectors)[0][0], (*rootEigenVectors)[1][0], (*rootEigenVectors)[2][0] },
-      { (*rootEigenVectors)[0][1], (*rootEigenVectors)[1][1], (*rootEigenVectors)[2][1] },
-      { (*rootEigenVectors)[0][2], (*rootEigenVectors)[1][2], (*rootEigenVectors)[2][2] }};
+      { eigenVectorsMatrix(0,2), eigenVectorsMatrix(1,2), eigenVectorsMatrix(2,2) },
+      { eigenVectorsMatrix(0,1), eigenVectorsMatrix(1,1), eigenVectorsMatrix(2,1) },
+      { eigenVectorsMatrix(0,0), eigenVectorsMatrix(1,0), eigenVectorsMatrix(2,0) }};
+    // { eigenVectorsMatrix(2,0), eigenVectorsMatrix(2,1), eigenVectorsMatrix(2,2) }};
     const double avePos[3] = {ShowerCentre[0], ShowerCentre[1], ShowerCentre[2]};
 
-    delete pca;
     return  recob::PCAxis(svdOk, nHits, eigenValues, eigenVectors, avePos);
+}
+
+TVector3 ShowerPCADirection::GetPCAxisVector(recob::PCAxis& PCAxis){
+
+  //Get the Eigenvectors.
+  std::vector<double> EigenVector = PCAxis.getEigenVectors()[0];
+
+  return TVector3(EigenVector[0], EigenVector[1],  EigenVector[2]);
+}
+
+
+int ShowerPCADirection::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
+    reco::shower::ShowerElementHolder& ShowerEleHolder){
+
+  //First check the element has been set
+  if(!ShowerEleHolder.CheckElement(fShowerPCAOutputLabel)){
+    mf::LogError("ShowerPCADirection: Add Assns") << "PCA not set."<< std::endl;
+    return 1;
   }
 
-  TVector3 ShowerPCADirection::GetPCAxisVector(recob::PCAxis& PCAxis){
+  int ptrSize = GetVectorPtrSize(fShowerPCAOutputLabel);
 
-    //Get the Eigenvectors.
-    std::vector<double> EigenVector = PCAxis.getEigenVectors()[0];
+  const art::Ptr<recob::PCAxis> pcaPtr = GetProducedElementPtr<recob::PCAxis>(fShowerPCAOutputLabel, ShowerEleHolder, ptrSize-1);
+  const art::Ptr<recob::Shower> showerPtr = GetProducedElementPtr<recob::Shower>("shower", ShowerEleHolder);
 
-    return TVector3(EigenVector[0], EigenVector[1],  EigenVector[2]);
-  }
+  AddSingle<art::Assns<recob::Shower, recob::PCAxis> >(showerPtr,pcaPtr,"ShowerPCAxisAssn");
+  AddSingle<art::Assns<recob::PFParticle, recob::PCAxis> >(pfpPtr,pcaPtr,"PFParticlePCAxisAssn");
 
-
-  int ShowerPCADirection::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
-      reco::shower::ShowerElementHolder& ShowerEleHolder){
-
-    //First check the element has been set
-    if(!ShowerEleHolder.CheckElement(fShowerPCAOutputLabel)){
-      mf::LogError("ShowerPCADirection: Add Assns") << "PCA not set."<< std::endl;
-      return 1;
-    }
-
-    int ptrSize = GetVectorPtrSize(fShowerPCAOutputLabel);
-
-    const art::Ptr<recob::PCAxis> pcaPtr = GetProducedElementPtr<recob::PCAxis>(fShowerPCAOutputLabel, ShowerEleHolder, ptrSize-1);
-    const art::Ptr<recob::Shower> showerPtr = GetProducedElementPtr<recob::Shower>("shower", ShowerEleHolder);
-
-    AddSingle<art::Assns<recob::Shower, recob::PCAxis> >(showerPtr,pcaPtr,"ShowerPCAxisAssn");
-    AddSingle<art::Assns<recob::PFParticle, recob::PCAxis> >(pfpPtr,pcaPtr,"PFParticlePCAxisAssn");
-
-    return 0;
-  }
+  return 0;
+}
 }
 
 DEFINE_ART_CLASS_TOOL(ShowerRecoTools::ShowerPCADirection)
