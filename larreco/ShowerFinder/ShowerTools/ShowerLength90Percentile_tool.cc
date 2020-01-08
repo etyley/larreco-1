@@ -121,8 +121,8 @@ namespace ShowerRecoTools {
     //Find the width of the shower
     double ShowerWidth = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(
         spacePoints[perpIter], ShowerStartPosition, ShowerDirection);
-    double ShowerMaxWidth = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(
-        spacePoints[spacePoints.size() -1], ShowerStartPosition, ShowerDirection);
+    // double ShowerMaxWidth = IShowerTool::GetTRACSAlg().SpacePointPerpendicular(
+    //     spacePoints[spacePoints.size() -1], ShowerStartPosition, ShowerDirection);
 
     double ShowerAngle = atan(ShowerWidth/ShowerLength);
     double ShowerAngleError = -9999; //TODO: Do properly

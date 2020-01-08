@@ -391,6 +391,17 @@ showerlength90percentile:{
     ShowerStartPositionInputLabel: "ShowerStartPosition"
     ShowerDirectionInputLabel: "ShowerDirection"
     ShowerLengthOuputLabel: "ShowerLength"
+    ShowerOpeningAngleOuputLabel: "ShowerOpeningAngle"
+}
+
+showerpcaeigenvaluelength:{
+    tool_type: ShowerPCAEigenvalueLength
+    BaseTools: @local::showerbasetools
+
+    PFParticleModuleLabel: "pandora"
+    ShowerPCAInputLabel: "ShowerPCA"
+    ShowerLengthOuputLabel: "ShowerLength"
+    ShowerOpeningAngleOuputLabel: "ShowerOpeningAngle"
 }
 
 END_PROLOG
