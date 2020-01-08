@@ -419,7 +419,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
   EventSubrun_TreeVal = evt.subRun();
   EventNumber_TreeVal = evt.event();
 
-  std::cout << "Analysing Event: " << EventNumber_TreeVal << EventSubrun_TreeVal << EventRun_TreeVal << std::endl;
+  // std::cout << "Analysing Event: " << EventNumber_TreeVal << EventSubrun_TreeVal << EventRun_TreeVal << std::endl;
 
   ++numevents;
 
@@ -778,7 +778,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
               std::cout<<"Something has gone horribly wrong, PFP PDG != 11||13"<<std::endl;
             }
           } // end loop over neutrino daughters
-          std::cout<<"Daughters done"<<std::endl;
+          // std::cout<<"Daughters done"<<std::endl;
           if(fmpfv.isValid()) {
             art::Handle<std::vector<recob::Vertex > > vertexHandle;
             evt.get(fmpfv.at(0).front().id(),vertexHandle);
@@ -799,7 +799,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       pfpNeutrinos_TreeVal[fShowerModuleLabel].push_back(pfpNeutrinoCounter);
       pfpTracks_TreeVal[fShowerModuleLabel].push_back(pfpTrackCounter);
       pfpShowers_TreeVal[fShowerModuleLabel].push_back(pfpShowerCounter);
-      if(fVerbose > 0) { std::cout<<"Number of PFP Neurtinos:"<<pfpNeutrinoCounter
+      if(fVerbose > 0) { std::cout<<"Number of PFP Neutrinos:"<<pfpNeutrinoCounter
         <<" and vertex: "<<neutrinoVertices.size()<<std::endl; };
       //TODO: Make this more general than the vertex case
       for (unsigned int vertex_iter=0; vertex_iter<neutrinoVertices.size();++vertex_iter){
@@ -829,7 +829,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
 
       }
     }
-
     if(fmh.size() == 0){
       std::cout << " No hits in a recob shower. Association is made incorrectly. Bailing" << std::endl;
       continue;
@@ -916,14 +915,20 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       double ShowerOpeningAngle                  = shower->OpenAngle();//cm
       std::vector< double >  ShowerEnergyPlanes  = shower->Energy();//MeV
       std::vector< double >  ShowerdEdX_vec      = shower->dEdx();//MeV/cm
-
+      double max_energy = -9999;
       //Check the energy is above the limit
-      auto max_energy = *max_element(std::begin(ShowerEnergyPlanes), std::end(ShowerEnergyPlanes));
+
+      if (ShowerEnergyPlanes.size()==0){
+        if(fVerbose > 0){
+          std::cout << "ShowerEnergyPlanes.size()==0, skipping shower" << std::endl;
+        }
+      }
       if(max_energy < fMinRecoEnergy){
         if(fVerbose > 0){
           std::cout << "Removing shower as it is below the minimum reco energy cut" << std::endl;
         }
-        continue;
+      } else {
+        max_energy = *max_element(std::begin(ShowerEnergyPlanes), std::end(ShowerEnergyPlanes));
       }
 
       //Check if user wants neutrino showers.
@@ -1286,7 +1291,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
           }
         }
       }
-      std::cout<< "finished to spacepoint" << std::endl;
+      // std::cout<< "finished to spacepoint" << std::endl;
 
       //Bools to fill metric histrograms wheen needed.
       bool EvaluateShowerDirection       = false;
@@ -1455,7 +1460,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       sNumHits_TreeVal[fShowerModuleLabel].push_back(showerhits.size());
 
       if(EvaluatesdEdx){
-        std::cout<<" ValShower dEdx: size: "<<ShowerdEdX_vec.size()<<" Plane 0: "<<ShowerdEdX_vec.at(0)<<" Plane 1: "<<ShowerdEdX_vec.at(1)<<" Plane 2: "<<ShowerdEdX_vec.at(2)<<" and best plane: "<<ShowerBest_Plane<<std::endl;
+        // std::cout<<" ValShower dEdx: size: "<<ShowerdEdX_vec.size()<<" Plane 0: "<<ShowerdEdX_vec.at(0)<<" Plane 1: "<<ShowerdEdX_vec.at(1)<<" Plane 2: "<<ShowerdEdX_vec.at(2)<<" and best plane: "<<ShowerBest_Plane<<std::endl;
 
         sdEdx_TreeVal[fShowerModuleLabel].push_back((ShowerdEdX_vec[ShowerBest_Plane]));
       }
@@ -1729,7 +1734,7 @@ void ana::ShowerValidation::ClusterValidation(std::vector< art::Ptr<recob::Clust
   std::vector< art::Ptr<recob::Hit> > clusterhits;
   art::Handle<std::vector<recob::Hit > > hitHandle;
 
-  std::cout<<"Clusters size: "<<clusters.size()<<" and "<<fmhc.at(clusters.at(0).key()).size()<<" and "<<clusterHandle.provenance()->moduleLabel()<<std::endl;
+  // std::cout<<"Clusters size: "<<clusters.size()<<" and "<<fmhc.at(clusters.at(0).key()).size()<<" and "<<clusterHandle.provenance()->moduleLabel()<<std::endl;
 
   if (fmhc.at(clusters.at(0).key()).size()==0) {
     mf::LogError("ShowerValidation") << "Cluster has no hits. Trying next cluster."
@@ -1780,6 +1785,7 @@ void ana::ShowerValidation::ClusterValidation(std::vector< art::Ptr<recob::Clust
         totalhits += MCTrack_hit_map[hitHandle.id()][*daughterID][(*hitPlaneMapit).first];
       }
     }
+
 
     int projection_match = -99999;
 
@@ -1937,9 +1943,9 @@ void ana::ShowerValidation::PFPValidation(std::vector<art::Ptr<recob::Cluster> >
       std::map<geo::PlaneID, int> hitPlaneMap = RecoUtils::NumberofPlaneHitsFromTrack(PFPTrackInfo, clusterhits);
 
       for(std::map<geo::PlaneID, int>::iterator hitPlaneMapit = hitPlaneMap.begin();  hitPlaneMapit != hitPlaneMap.end();  hitPlaneMapit++){
-        std::cout<<"Plane ID: "<<(*hitPlaneMapit).first<<std::endl;
-        std::cout<<"SignalHits: "<<(*hitPlaneMapit).second<<std::endl;
-        std::cout<<"TotalHits: "<<MCTrack_hit_map[hitHandle.id()][PFPTrackInfo][(*hitPlaneMapit).first]<<std::endl;
+        // std::cout<<"Plane ID: "<<(*hitPlaneMapit).first<<std::endl;
+        // std::cout<<"SignalHits: "<<(*hitPlaneMapit).second<<std::endl;
+        // std::cout<<"TotalHits: "<<MCTrack_hit_map[hitHandle.id()][PFPTrackInfo][(*hitPlaneMapit).first]<<std::endl;
 
         //Count how many hits are from the true shower.
         signalhits += (*hitPlaneMapit).second;
