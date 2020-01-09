@@ -922,13 +922,13 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         if(fVerbose > 0){
           std::cout << "ShowerEnergyPlanes.size()==0, skipping shower" << std::endl;
         }
+      } else {
+        max_energy = *max_element(std::begin(ShowerEnergyPlanes), std::end(ShowerEnergyPlanes));
       }
       if(max_energy < fMinRecoEnergy){
         if(fVerbose > 0){
           std::cout << "Removing shower as it is below the minimum reco energy cut" << std::endl;
         }
-      } else {
-        max_energy = *max_element(std::begin(ShowerEnergyPlanes), std::end(ShowerEnergyPlanes));
       }
 
       //Check if user wants neutrino showers.
