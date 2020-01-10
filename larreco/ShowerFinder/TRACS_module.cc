@@ -262,28 +262,41 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       }
     }
 
-    //If we want a full shower and we recieved an error call from a tool return;
-    if(err){
-      mf::LogError("TRACS") << "Error on tool. Assuming all the shower products and properties were not set and bailing." << std::endl;
-      continue;
-    }
-
-    //If we are are not allowing partial shower check all the products to make the shower are correctly set
+    //If we are are not allowing partial shower check all of the things
     if(!fAllowPartialShowers){
-      if(!selement_holder.CheckElement("ShowerStartPosition")){
+      // If we recieved an error call from a tool return;
+      if(err){
+        mf::LogError("TRACS") << "Error on tool. Assuming all the shower products and properties were not set and bailing." << std::endl;
+        continue;
+      }
+
+      // Check everything we need is in the shower element holder
+      if(!selement_holder.CheckElement(fShowerStartPositionLabel)){
         mf::LogError("TRACS") << "The start position is not set in the element holder. bailing" << std::endl;
         continue;
       }
-      if(!selement_holder.CheckElement("ShowerDirection")){
+      if(!selement_holder.CheckElement(fShowerDirectionLabel)){
         mf::LogError("TRACS") << "The direction is not set in the element holder. bailing" << std::endl;
         continue;
       }
-      if(!selement_holder.CheckElement("ShowerEnergy")){
+      if(!selement_holder.CheckElement(fShowerEnergyLabel)){
         mf::LogError("TRACS") << "The energy is not set in the element holder. bailing" << std::endl;
         continue;
       }
-      if(!selement_holder.CheckElement("ShowerdEdx")){
+      if(!selement_holder.CheckElement(fShowerdEdxLabel)){
         mf::LogError("TRACS") << "The dEdx is not set in the element holder. bailing" << std::endl;
+        continue;
+      }
+      if(!selement_holder.CheckElement(fShowerBestPlaneLabel)){
+        mf::LogError("TRACS") << "The BestPlane is not set in the element holder. bailing" << std::endl;
+        continue;
+      }
+      if(!selement_holder.CheckElement(fShowerLengthLabel)){
+        mf::LogError("TRACS") << "The length is not set in the element holder. bailing" << std::endl;
+        continue;
+      }
+      if(!selement_holder.CheckElement(fShowerOpeningAngleLabel)){
+        mf::LogError("TRACS") << "The opening angle is not set in the element holder. bailing" << std::endl;
         continue;
       }
 
@@ -307,10 +320,10 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     TVector3                           ShowerDirection      = {-999,-999,-999};
     std::vector<double>                ShowerEnergy         = {-999,-999,-999};
     std::vector<double>                ShowerdEdx           = {-999,-999,-999};
+    int                                BestPlane            = -999;
     double                             ShowerLength         = -999;
     double                             ShowerOpeningAngle   = -999;
 
-    int                                BestPlane               = -999;
     TVector3                           ShowerStartPositionErr  = {-999,-999,-999};
     TVector3                           ShowerDirectionErr      = {-999,-999,-999};
     std::vector<double>                ShowerEnergyErr         = {-999,-999,-999};
@@ -335,9 +348,9 @@ void reco::shower::TRACS::produce(art::Event& evt) {
       std::cout<<"Shower Direction: X:"<<ShowerDirection.X()<<" Y: "<<ShowerDirection.Y()<<" Z: "<<ShowerDirection.Z()<<std::endl;
       std::cout<<"Shower dEdx: size: "<<ShowerdEdx.size()<<" Plane 0: "<<ShowerdEdx.at(0)<<" Plane 1: "<<ShowerdEdx.at(1)<<" Plane 2: "<<ShowerdEdx.at(2)<<std::endl;
       std::cout<<"Shower Energy: size: "<<ShowerEnergy.size()<<" Plane 0: "<<ShowerEnergy.at(0)<<" Plane 1: "<<ShowerEnergy.at(1)<<" Plane 2: "<<ShowerEnergy.at(2)<<std::endl;
+      std::cout<<"Shower Best Plane: "<<BestPlane<<std::endl;
       std::cout<<"Shower Length: " << ShowerLength << std::endl;
       std::cout<<"Shower Opening Angle: " << ShowerOpeningAngle << std::endl;
-      std::cout<<"Shower Best Plane: "<<BestPlane<<std::endl;
 
       //Print what has been created in the shower
       selement_holder.PrintElements();
@@ -380,6 +393,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     //AddAssociations
     int assn_err = 0;
     for(auto const& fShowerTool: fShowerTools){
+      //AddAssociations
       assn_err += fShowerTool->AddAssociations(pfp, evt,selement_holder);
     }
     if(!fAllowPartialShowers && assn_err > 0){
