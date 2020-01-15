@@ -940,7 +940,8 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       }
 
       int ShowerBest_Plane = shower->best_plane();
-      if(std::isnan(ShowerBest_Plane) || ShowerBest_Plane==-999 ){ShowerBest_Plane = 0;}
+      if(std::isnan(ShowerBest_Plane) || ShowerBest_Plane<0 )
+        ShowerBest_Plane = 2;
 
       //Function from RecoUtils, finds the most probable track ID associated with the set of hits from there true energy depositons. The pair returns the energy as well.
       std::pair<int,double> ShowerTrackInfo = ShowerUtils::TrueParticleIDFromTrueChain(ShowersMothers,showerhits,ShowerBest_Plane);
