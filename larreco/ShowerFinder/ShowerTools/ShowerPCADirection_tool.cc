@@ -344,41 +344,38 @@ namespace ShowerRecoTools {
       { eigenVectorsMatrix(0,2), eigenVectorsMatrix(1,2), eigenVectorsMatrix(2,2) },
       { eigenVectorsMatrix(0,1), eigenVectorsMatrix(1,1), eigenVectorsMatrix(2,1) },
       { eigenVectorsMatrix(0,0), eigenVectorsMatrix(1,0), eigenVectorsMatrix(2,0) }};
-    // { eigenVectorsMatrix(2,0), eigenVectorsMatrix(2,1), eigenVectorsMatrix(2,2) }};
     const double avePos[3] = {ShowerCentre[0], ShowerCentre[1], ShowerCentre[2]};
 
     return  recob::PCAxis(svdOk, nHits, eigenValues, eigenVectors, avePos);
-}
-
-TVector3 ShowerPCADirection::GetPCAxisVector(recob::PCAxis& PCAxis){
-
-  //Get the Eigenvectors.
-  std::vector<double> EigenVector = PCAxis.getEigenVectors()[0];
-
-  return TVector3(EigenVector[0], EigenVector[1],  EigenVector[2]);
-}
-
-
-int ShowerPCADirection::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
-    reco::shower::ShowerElementHolder& ShowerEleHolder){
-
-  //First check the element has been set
-  if(!ShowerEleHolder.CheckElement(fShowerPCAOutputLabel)){
-    mf::LogError("ShowerPCADirection: Add Assns") << "PCA not set."<< std::endl;
-    return 1;
   }
 
-  int ptrSize = GetVectorPtrSize(fShowerPCAOutputLabel);
+  TVector3 ShowerPCADirection::GetPCAxisVector(recob::PCAxis& PCAxis){
 
-  const art::Ptr<recob::PCAxis> pcaPtr = GetProducedElementPtr<recob::PCAxis>(fShowerPCAOutputLabel, ShowerEleHolder, ptrSize-1);
-  const art::Ptr<recob::Shower> showerPtr = GetProducedElementPtr<recob::Shower>("shower", ShowerEleHolder);
+    //Get the Eigenvectors.
+    std::vector<double> EigenVector = PCAxis.getEigenVectors()[0];
 
-  AddSingle<art::Assns<recob::Shower, recob::PCAxis> >(showerPtr,pcaPtr,"ShowerPCAxisAssn");
-  AddSingle<art::Assns<recob::PFParticle, recob::PCAxis> >(pfpPtr,pcaPtr,"PFParticlePCAxisAssn");
+    return TVector3(EigenVector[0], EigenVector[1],  EigenVector[2]);
+  }
 
-  return 0;
+
+  int ShowerPCADirection::AddAssociations(const art::Ptr<recob::PFParticle>& pfpPtr, art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
+
+    //First check the element has been set
+    if(!ShowerEleHolder.CheckElement(fShowerPCAOutputLabel)){
+      mf::LogError("ShowerPCADirection: Add Assns") << "PCA not set."<< std::endl;
+      return 1;
+    }
+
+    int ptrSize = GetVectorPtrSize(fShowerPCAOutputLabel);
+
+    const art::Ptr<recob::PCAxis> pcaPtr = GetProducedElementPtr<recob::PCAxis>(fShowerPCAOutputLabel, ShowerEleHolder, ptrSize-1);
+    const art::Ptr<recob::Shower> showerPtr = GetProducedElementPtr<recob::Shower>("shower", ShowerEleHolder);
+
+    AddSingle<art::Assns<recob::Shower, recob::PCAxis> >(showerPtr,pcaPtr,"ShowerPCAxisAssn");
+    AddSingle<art::Assns<recob::PFParticle, recob::PCAxis> >(pfpPtr,pcaPtr,"PFParticlePCAxisAssn");
+
+    return 0;
+  }
 }
-}
-
 DEFINE_ART_CLASS_TOOL(ShowerRecoTools::ShowerPCADirection)
-

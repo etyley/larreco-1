@@ -31,14 +31,14 @@ showerlinearenergy:{
 tool_type:  ShowerLinearEnergy
               BaseTools: @local::showerbasetools
               PFParticleModuleLabel: "pandora"
-              UGradient:   0.00155644  #Gradient of the linear graph of the total charge to total
-#energy, in the U plane. in MeV/ADC.
-              UIntercept:  5.92931     #Intercept of the linear graph of the total charge to total
+              Plane0Gradient:   0.00155644  #Gradient of the linear graph of the total charge to total
+#energy, in the Plane0 plane. in MeV/ADC.
+              Plane0Intercept:  5.92931     #Intercept of the linear graph of the total charge to total
 #energy in the plane. MeV
-              VGradient:   0.00173915
-              VIntercept:  -2.13307
-              ZGradient:   0.00153631
-              ZIntercept:  5.19711
+              Plane1Gradient:   0.00173915
+              Plane1Intercept:  -2.13307
+              Plane2Gradient:   0.00153631
+              Plane2Intercept:  5.19711
               XGradient:   0
               XIntercept:  0
               YGradient:   0
@@ -46,6 +46,7 @@ tool_type:  ShowerLinearEnergy
               ThreeDGradient:  0
               ThreeDIntercept: 0
               ShowerEnergyOutputLabel: "ShowerEnergy"
+              ShowerBestPlaneOutputLabel: "ShowerOverallBestPlane"
 }
 
 shower2Dlinearregressiontrackhitfinder:{
@@ -403,6 +404,15 @@ showerpcaeigenvaluelength:{
     ShowerLengthOuputLabel: "ShowerLength"
     ShowerOpeningAngleOuputLabel: "ShowerOpeningAngle"
     NSigma: 3
+}
+
+showerdecisionbestplane:{
+  tool_type: ShowerDecisionBestPlane
+  BaseTools: @local::showerbasetools
+
+  InitialTrackBestPlaneInputLabel: "ShowerInitialTrackBestPlane"
+  OverallBestPlaneInputLabel:      "ShowerOverallBestPlane"
+  BestPlaneOutputLabel:            "ShowerBestPlane"
 }
 
 END_PROLOG
