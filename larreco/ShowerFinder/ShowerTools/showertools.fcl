@@ -1,4 +1,4 @@
-xh#include "trackfinderalgorithms.fcl"
+#include "trackfinderalgorithms.fcl"
 #include "showeralgorithms.fcl"
 #include "clusteralgorithms.fcl"
 #include "calorimetry.fcl"

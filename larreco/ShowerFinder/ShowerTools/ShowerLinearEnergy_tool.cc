@@ -51,8 +51,8 @@ namespace ShowerRecoTools {
 
       //fcl parameters
       unsigned int        fNumPlanes;
-      std::vector<double> fGradients;   //Gradient of the linear fit of total charge to total energy on the U plane.
-      std::vector<double> fIntercepts;  //Intercept of the linear fit of total charge to total energy on the U plane.
+      std::vector<double> fGradients;   //Gradient of the linear fit of total charge to total energy
+      std::vector<double> fIntercepts;  //Intercept of the linear fit of total charge to total energy
 
       art::InputTag fPFParticleModuleLabel;
 
@@ -75,7 +75,6 @@ namespace ShowerRecoTools {
     detprop(lar::providerFrom<detinfo::DetectorPropertiesService>())
   {
     fNumPlanes = fGeom->Nplanes();
-    std::cout<<"Test123: "<<fNumPlanes<<std::endl;
     if (fNumPlanes!=fGradients.size() || fNumPlanes!=fIntercepts.size()){
       throw cet::exception("ShowerLinearEnergy")
         << "The number of planes does not match the size of the fcl parametes passed: Num Planes: "
@@ -88,13 +87,9 @@ namespace ShowerRecoTools {
   {
   }
 
-
-
   int ShowerLinearEnergy::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-      art::Event& Event,
-      reco::shower::ShowerElementHolder& ShowerEleHolder
+      art::Event& Event, reco::shower::ShowerElementHolder& ShowerEleHolder
       ){
-
 
     // Get the assocated pfParicle vertex PFParticles
     art::Handle<std::vector<recob::PFParticle> > pfpHandle;
@@ -131,7 +126,7 @@ namespace ShowerRecoTools {
 
     // Calculate the energy fro each plane && best plane
     int bestPlane                 = -999;
-    unsigned int bestPlaneNumHits = -999;
+    unsigned int bestPlaneNumHits = 0;
 
     //Holder for the final product
     std::vector<double> energyVec(fNumPlanes, -999);
