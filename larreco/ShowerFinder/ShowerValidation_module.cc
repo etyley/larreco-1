@@ -953,8 +953,8 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
       if(TrueEnergyDepWithinShower_FromTrueShower == -99999 && fMatchShowersInTruth){
         if(fVerbose > 0){
           std::cout << "Reco Shower not matched to true shower. Think of reducing the energy threshold" << std::endl;
-          continue;
         }
+        continue;
       }
 
       sBestPlane_TreeVal[fShowerModuleLabel].push_back(ShowerBest_Plane);
