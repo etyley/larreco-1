@@ -706,7 +706,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         for (auto const& daughterIter: Daughters){
           const art::Ptr<recob::PFParticle>& daughter = pfpsMap[daughterIter];
           if (fPFPValidation){
-            if(fmpfc.isValid()){
+            if(fmpfc.isValid() && fmpfc.size()!=0){
               art::Handle<std::vector<recob::Cluster > > clusterHandle;
               evt.get(fmpfc.at(0).front().id(),clusterHandle);
               if(clusterHandle.isValid()){
@@ -727,7 +727,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
           pfpPrimaries.push_back(daughter->Self());
         } // end loop over neutrino daughters
         // Get the PFP neutrino vertex
-        if(fmpfv.isValid()) {
+        if(fmpfv.isValid() && fmpfv.size()!=0) {
           art::Handle<std::vector<recob::Vertex > > vertexHandle;
           evt.get(fmpfv.at(0).front().id(),vertexHandle);
 
@@ -1427,14 +1427,15 @@ for (auto const& fShowerModuleLabel: fShowerModuleLabels) {
 
   sStartEndProcess_TreeVal[fShowerModuleLabel].clear();
 
-  for (unsigned int plane=0; plane<geom->Nplanes(); plane++) {
-    // cProjectionMatchedEnergy_TreeVal[fShowerModuleLabel].clear();
-    cEnergyComp_TreeVal[fShowerModuleLabel][plane].clear();
-    cEnergyPurity_TreeVal[fShowerModuleLabel][plane].clear();
-    cHitsComp_TreeVal[fShowerModuleLabel][plane].clear();
-    cHitsPurity_TreeVal[fShowerModuleLabel][plane].clear();
+  if (fClusterValidation){
+    for (unsigned int plane=0; plane<geom->Nplanes(); plane++) {
+      // cProjectionMatchedEnergy_TreeVal[fShowerModuleLabel].clear();
+      cEnergyComp_TreeVal[fShowerModuleLabel][plane].clear();
+      cEnergyPurity_TreeVal[fShowerModuleLabel][plane].clear();
+      cHitsComp_TreeVal[fShowerModuleLabel][plane].clear();
+      cHitsPurity_TreeVal[fShowerModuleLabel][plane].clear();
+    }
   }
-
 }
 eNumTrueShowers_TreeVal = -9999;
 eNumTrueShowersviaECut_TreeVal = -9999;
