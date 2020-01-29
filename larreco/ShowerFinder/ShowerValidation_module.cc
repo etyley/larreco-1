@@ -727,7 +727,7 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
           pfpPrimaries.push_back(daughter->Self());
         } // end loop over neutrino daughters
         // Get the PFP neutrino vertex
-        if(fmpfv.isValid() && fmpfv.size()!=0) {
+        if(fmpfv.isValid() && fmpfv.size()!=0 && fmpfv.at(0).size()!=0){
           art::Handle<std::vector<recob::Vertex > > vertexHandle;
           evt.get(fmpfv.at(0).front().id(),vertexHandle);
 
