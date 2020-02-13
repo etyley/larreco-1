@@ -39,10 +39,10 @@ namespace ShowerRecoTools {
 
       ~ShowerStartPositionCheater();
 
-      //Calculate Cheating Start Position 
+      //Calculate Cheating Start Position
       int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			   art::Event& Event, 
-			   reco::shower::ShowerElementHolder& ShowerEleHolder) override;
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
     private:
 
@@ -73,9 +73,9 @@ namespace ShowerRecoTools {
   {
   }
 
-  int ShowerStartPositionCheater::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle, 
-						   art::Event& Event, 
-						   reco::shower::ShowerElementHolder& ShowerEleHolder){
+  int ShowerStartPositionCheater::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
 
     //Could store these in the shower element holder and just calculate once?
     std::map<int,const simb::MCParticle*> trueParticles = fTRACSCheatingAlg.GetTrueParticleMap();
@@ -118,7 +118,23 @@ namespace ShowerRecoTools {
     }
 
     const simb::MCParticle* trueParticle = trueParticles[ShowerTrackInfo.first];
-    TVector3 trueStartPos = {trueParticle->Vx(),trueParticle->Vy(),trueParticle->Vz()};
+
+
+    TVector3 trueStartPos = {-999,-999,-999};
+    // If the true particle is a photon, we need to be smarter.
+    // Select the first traj point where tne photon loses energy
+    if (abs(trueParticle->PdgCode()) == 22){
+      double initialEnergy = trueParticle->E();
+      unsigned int TrajPoints = trueParticle->NumberTrajectoryPoints();
+      for (unsigned int trajPoint=0; trajPoint<TrajPoints; trajPoint++){
+        if (trueParticle->E(trajPoint) < initialEnergy){
+          trueStartPos = trueParticle->Position(trajPoint).Vect();
+          break;
+        }
+      }
+    } else {
+      trueStartPos = trueParticle->Position().Vect();
+    }
 
     TVector3 trueStartPosErr = {-999,-999,-999};
     ShowerEleHolder.SetElement(trueStartPos,trueStartPosErr,fShowerStartPositionOutputLabel);

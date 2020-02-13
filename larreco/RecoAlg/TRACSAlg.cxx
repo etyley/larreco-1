@@ -578,8 +578,13 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
   // initial loop over pfps to find nuber of spacepoints for tracks and showers
   for(auto const& pfp: pfps){
     std::vector<art::Ptr<recob::SpacePoint> > sps = fmspp.at(pfp.key());
-    if (pfp->PdgCode()==11) { pfpShowerCounter += sps.size();
-    } else if (pfp->PdgCode()==13) { pfpTrackCounter += sps.size(); }
+    // If running pandora cheating it will call photons pdg 22
+    int pdg = abs(pfp->PdgCode()); // Track or shower
+    if (pdg==11 || pdg==22){
+      pfpShowerCounter += sps.size();
+    } else {
+      pfpTrackCounter += sps.size();
+    }
   }
 
   std::unique_ptr<TPolyMarker3D> pfpPolyTrack = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(pfpTrackCounter));
@@ -591,7 +596,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
   for(auto const& pfp: pfps){
     std::vector<art::Ptr<recob::SpacePoint> > sps = fmspp.at(pfp.key());
-    int pdg = pfp->PdgCode(); // Track or shower
+    int pdg = abs(pfp->PdgCode()); // Track or shower
     for (auto sp : sps){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(sp) - showerStartPosition;
       TVector3 pos = shower::TRACSAlg::SpacePointPosition(sp);
@@ -606,11 +611,11 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
       z_min = std::min(z,z_min);
       z_max = std::max(z,z_max);
 
-
-      if (pdg==11){
+      // If running pandora cheating it will call photons pdg 22
+      if (pdg==11 || pdg==22){
         pfpPolyShower->SetPoint(showerPoints,x,y,z);
         ++showerPoints;
-      } else if (pdg==13){
+      } else {
         pfpPolyTrack->SetPoint(trackPoints,x,y,z);
         ++trackPoints;
       }

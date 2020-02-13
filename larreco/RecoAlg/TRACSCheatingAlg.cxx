@@ -5,8 +5,8 @@ shower::TRACSCheatingAlg::TRACSCheatingAlg(const fhicl::ParameterSet& pset):
 {
   fPFParticleModuleLabel = pset.get<art::InputTag> ("PFParticleModuleLabel");
   fHitModuleLabel        = pset.get<art::InputTag> ("HitModuleLabel");
-  fShowerStartPositionInputLabel = pset.get<std::string>("ShowerStartPositionInputFile");
-  fShowerDirectionInputLabel     = pset.get<std::string>("ShowerDirectionInputFile");
+  fShowerStartPositionInputLabel = pset.get<std::string>("ShowerStartPositionInputLabel");
+  fShowerDirectionInputLabel     = pset.get<std::string>("ShowerDirectionInputLabel");
   fInitialTrackSpacePointsInputLabel = pset.get<std::string>("InitialTrackSpacePointsInputLabel");
 }
 
@@ -36,15 +36,20 @@ std::map<int,std::vector<int> > shower::TRACSCheatingAlg::GetTrueChain(
   for (const auto &particleIt : trueParticles ){
     const simb::MCParticle *particle = particleIt.second;
     const simb::MCParticle *mother   = particle;
+
+    if(TMath::Abs(particle->PdgCode()) != 11 && TMath::Abs(particle->PdgCode()) != 22){continue;}
+
     // While the grand mother exists and is an electron or photon
     // Note the true mother will skip this loop and fill itself into the map
-    while (mother->Mother()!=0 && trueParticles.find(mother->Mother())!= trueParticles.end() &&
-        (TMath::Abs(trueParticles[mother->Mother()]->PdgCode()==11) ||
-         TMath::Abs(trueParticles[mother->Mother()]->PdgCode()==22))){
-      mother = trueParticles[mother->Mother()];
+    while (mother->Mother()!=0 && trueParticles.find(mother->Mother())!= trueParticles.end()){
+
+      int motherId = mother->Mother();
+      if (TMath::Abs(trueParticles[motherId]->PdgCode())!=11 &&
+          TMath::Abs(trueParticles[motherId]->PdgCode())!=22){
+        break;
+      }
+      mother = trueParticles[motherId];
     }
-    //std::cout<<"Mother Done"<<std::endl;
-    // This if statement double checks mothers and discards non-shower primary particles
     showerMothers[mother->TrackId()].push_back(particle->TrackId());
   }
   return showerMothers;
@@ -237,7 +242,7 @@ int shower::TRACSCheatingAlg::TrueParticleID(const art::Ptr<recob::Hit>& hit) co
 }
 
 std::pair<int,double> shower::TRACSCheatingAlg::TrueParticleIDFromTrueChain(std::map<int,std::vector<int>> const& ShowersMothers,
-                                                                            std::vector<art::Ptr<recob::Hit> > const& hits, int planeid) const {
+    std::vector<art::Ptr<recob::Hit> > const& hits, int planeid) const {
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   art::ServiceHandle<cheat::ParticleInventoryService> particleInventory;
 

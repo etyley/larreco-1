@@ -357,7 +357,7 @@ showerpcapropergationstartposition:{
     ShowerStartPositionInputLabel: "ShowerStartPosition"
     }
 
-showerbayeslikelihooddedxcutting:{
+ShowerLikelihooddEdxCutting:{
     tool_type:  ShowerLikelihooddEdxCutting
     BaseTools: @local::showerbasetools
     dEdxInputLabel: "ShowerdEdxVec"
