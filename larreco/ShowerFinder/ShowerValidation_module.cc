@@ -1008,13 +1008,20 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
         //Cannot do truth matching if its turned off.
         if(fMatchShowersInTruth){
           //Where do the hits come from
+          std::pair<int, double>  showerInitialTrackInfo = ShowerUtils::TrueParticleIDFromTrueChain(
+              showerMothers, initialtrackhits, ShowerBest_Plane);
+
+          if (showerInitialTrackInfo.first != ShowerTrackInfo.first){
+            continue;
+          }
+
+          initialtrack_energy_from_mother = showerInitialTrackInfo.second;
+          initialtrack_energy = RecoUtils::TotalEnergyDepinHits(initialtrackhits, ShowerBest_Plane);
+          true_energy_initialTrack = MCTrack_Energy_map.at(ShowerTrackID);
+
           if(trueParticles[ShowerTrackID]->PdgCode() == 11){
             initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,initialtrackhits);
             true_num_hits_initialTrack = RecoUtils::NumberofPrimaryHitsFromTrack(ShowerTrackID,showerhits);
-            initialtrack_energy =  RecoUtils::TotalEnergyDepinHits(initialtrackhits, ShowerBest_Plane);
-            true_energy_initialTrack = MCTrack_Energy_map.at(ShowerTrackID);
-            initialtrack_energy_from_mother = RecoUtils::TotalEnergyDepinHitsFromTrack(
-                initialtrackhits, ShowerTrackID, ShowerBest_Plane);
           } else {
             //Get the ee+ pair daughters from the photon.
             std::vector<int> Electrons;
@@ -1025,13 +1032,6 @@ void ana::ShowerValidation::analyze(const art::Event& evt) {
             }
             initialtrack_hits_from_mother = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,initialtrackhits);
             true_num_hits_initialTrack    = RecoUtils::NumberofPrimaryHitsWithAllTracks(Electrons,showerhits);
-
-            initialtrack_energy = RecoUtils::TotalEnergyDepinHits(initialtrackhits, ShowerBest_Plane);
-            for (auto const& electron: Electrons){
-              true_energy_initialTrack += MCTrack_Energy_map.at(electron);
-              initialtrack_energy_from_mother += RecoUtils::TotalEnergyDepinHitsFromTrack(
-                  initialtrackhits, electron, ShowerBest_Plane);
-            }
           }
         }
 
