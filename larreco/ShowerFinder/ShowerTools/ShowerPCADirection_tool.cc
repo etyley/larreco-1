@@ -125,7 +125,10 @@ namespace ShowerRecoTools {
       throw cet::exception("ShowerPCADirection") << "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
-    art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
+
+    art::FindManyP<recob::SpacePoint> fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+        pfpHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
 
     if (!fmspp.isValid()){
       throw cet::exception("ShowerPCADirection") << "Trying to get the spacepoint and failed. Something is not configured correctly. Stopping ";
@@ -138,7 +141,9 @@ namespace ShowerRecoTools {
       throw cet::exception("ShowerPCADirection") << "Could not configure the spacepoint handle. Something is configured incorrectly. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Hit> fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
+        spHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
     if(!fmh.isValid()){
       throw cet::exception("ShowerPCADirection") << "Spacepoint and hit association not valid. Stopping.";
       return 1;

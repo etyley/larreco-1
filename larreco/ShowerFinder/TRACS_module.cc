@@ -176,6 +176,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
 
   //Ptr makers for the products
   uniqueproducerPtrs.SetPtrMakers(evt);
+  reco::shower::ShowerElementHolder selement_holder;
 
   //Get the PFParticles
   art::Handle<std::vector<recob::PFParticle> > pfpHandle;
@@ -194,9 +195,15 @@ void reco::shower::TRACS::produce(art::Event& evt) {
   }
 
   //Get the assoications to hits, clusters and spacespoints
-  art::FindManyP<recob::Hit> fmh(clusterHandle, evt, fPFParticleModuleLabel);
-  art::FindManyP<recob::Cluster> fmcp(pfpHandle, evt, fPFParticleModuleLabel);
-  art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, evt, fPFParticleModuleLabel);
+  art::FindManyP<recob::Hit> fmh = selement_holder.GetFindManyP<recob::Hit>(
+      clusterHandle, evt, fPFParticleModuleLabel);
+  art::FindManyP<recob::Cluster> fmcp = selement_holder.GetFindManyP<recob::Cluster>(
+      pfpHandle, evt, fPFParticleModuleLabel);
+  art::FindManyP<recob::SpacePoint> fmspp = selement_holder.GetFindManyP<recob::SpacePoint>(
+      pfpHandle, evt, fPFParticleModuleLabel);
+  // art::FindManyP<recob::Hit> fmh(clusterHandle, evt, fPFParticleModuleLabel);
+  // art::FindManyP<recob::Cluster> fmcp(pfpHandle, evt, fPFParticleModuleLabel);
+  // art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, evt, fPFParticleModuleLabel);
 
   if(!fmcp.isValid()){
     throw cet::exception("TRACS") << "Find many clusters is not valid." << std::endl;
@@ -215,7 +222,6 @@ void reco::shower::TRACS::produce(art::Event& evt) {
   // - Initial Track Hits
   // - Energy
   // - dEdx
-  reco::shower::ShowerElementHolder selement_holder;
 
   int shower_iter = 0;
   //Loop of the pf particles
@@ -402,7 +408,7 @@ void reco::shower::TRACS::produce(art::Event& evt) {
     }
 
     //Reset the showerproperty holder.
-    selement_holder.ClearAll();
+    selement_holder.ClearShower();
   }
 
   //Put everything in the event.

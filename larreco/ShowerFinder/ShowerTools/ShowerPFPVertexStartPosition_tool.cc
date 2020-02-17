@@ -37,25 +37,25 @@ namespace ShowerRecoTools{
 
   class ShowerPFPVertexStartPosition: public IShowerTool {
 
-  public:
-    
-    ShowerPFPVertexStartPosition(const fhicl::ParameterSet& pset);
-    
-    ~ShowerPFPVertexStartPosition();
-    
-    //Calculate the start position
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event,
-			 reco::shower::ShowerElementHolder& ShowerEleHolder
-			 ) override;
-    
-    
+    public:
+
+      ShowerPFPVertexStartPosition(const fhicl::ParameterSet& pset);
+
+      ~ShowerPFPVertexStartPosition();
+
+      //Calculate the start position
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder
+          ) override;
+
+
     private:
-    
-    //fcl parameters
-    art::InputTag fPFParticleModuleLabel; 
-    std::string   fShowerStartPositionOutputLabel; 
-    std::string   fShowerDirectionInputLabel;
+
+      //fcl parameters
+      art::InputTag fPFParticleModuleLabel;
+      std::string   fShowerStartPositionOutputLabel;
+      std::string   fShowerDirectionInputLabel;
   };
 
 
@@ -72,42 +72,47 @@ namespace ShowerRecoTools{
   }
 
   int ShowerPFPVertexStartPosition::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-					    art::Event& Event, 
-					    reco::shower::ShowerElementHolder& ShowerEleHolder){
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
 
     //Get the vertices.
-    art::Handle<std::vector<recob::Vertex> > vtxHandle;
-    std::vector<art::Ptr<recob::Vertex> > vertices;
-    if (Event.getByLabel(fPFParticleModuleLabel, vtxHandle))
-      art::fill_ptr_vector(vertices, vtxHandle);
-    else {
+    art::Handle<std::vector<recob::Vertex> > vtxHandle =
+      ShowerEleHolder.GetHandle<recob::Vertex>(Event, fPFParticleModuleLabel);
+    if (!vtxHandle.isValid()){
       throw cet::exception("ShowerPFPVertexStartPosition") << "Could not get the pandora vertices. Something is not configured correctly. Please give the correct pandora module label. Stopping";
       return 1;
     }
-    
+
     //Get the spacepoints handle and the hit assoication
-    art::Handle<std::vector<recob::SpacePoint> > spHandle;
-    if (!Event.getByLabel(fPFParticleModuleLabel, spHandle)){
+    art::Handle<std::vector<recob::SpacePoint> > spHandle =
+      ShowerEleHolder.GetHandle<recob::SpacePoint>(Event, fPFParticleModuleLabel);
+    if (!spHandle.isValid()){
       throw cet::exception("ShowerPFPVertexStartPosition") << "Coquld not configure the spacepoint handle. Something is configured incorrectly. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Hit> fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
+        spHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
     if(!fmh.isValid()){
       throw cet::exception("ShowerPFPVertexStartPosition") << "Spacepoint and hit association not valid. Stopping.";
       return 1;
     }
 
     // Get the assocated pfParicle vertex PFParticles
-    art::Handle<std::vector<recob::PFParticle> > pfpHandle;
-    if (!Event.getByLabel(fPFParticleModuleLabel, pfpHandle)){
+    art::Handle<std::vector<recob::PFParticle> > pfpHandle =
+      ShowerEleHolder.GetHandle<recob::PFParticle>(Event, fPFParticleModuleLabel);
+    if (!pfpHandle.isValid()){
       throw cet::exception("ShowerPFPVertexStartPosition") << "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Vertex> fmv(pfpHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Vertex> fmv = ShowerEleHolder.GetFindManyP<recob::Vertex>(
+        pfpHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::Vertex> fmv(pfpHandle, Event, fPFParticleModuleLabel);
     if(!fmv.isValid()){
       throw cet::exception("ShowerPFPVertexStartPosition") << "Vertex and PF particle association is somehow not valid. Stopping";
       return 1;
     }
+
     std::vector<art::Ptr<recob::Vertex> > vtx_cand;
     try{
       vtx_cand = fmv.at(pfparticle.key());
@@ -162,7 +167,7 @@ namespace ShowerRecoTools{
 
       TVector3 ShowerStartPositionErr = {-999,-999,-999};
       ShowerEleHolder.SetElement(ShowerStartPosition,ShowerStartPositionErr,fShowerStartPositionOutputLabel);
-  
+
       return 0;
     }
 

@@ -32,36 +32,36 @@ namespace ShowerRecoTools{
 
   class ShowerStandardCalodEdx:IShowerTool {
 
-  public:
+    public:
 
-    ShowerStandardCalodEdx(const fhicl::ParameterSet& pset);
+      ShowerStandardCalodEdx(const fhicl::ParameterSet& pset);
 
-    ~ShowerStandardCalodEdx();
+      ~ShowerStandardCalodEdx();
 
-    //Generic Direction Finder
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event,
-			 reco::shower::ShowerElementHolder& ShowerEleHolder
-			 ) override;
-    
-  private:
-    
-    //Define the services and algorithms
-    art::ServiceHandle<geo::Geometry> fGeom;
-    calo::CalorimetryAlg              fCalorimetryAlg;
+      //Generic Direction Finder
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder
+          ) override;
 
-    //fcl parameters.
-    double fdEdxTrackLength,dEdxTrackLength; //Max length from a hit can be to the start point in cm.
-    bool   fMaxHitPlane;     //Set the best planes as the one with the most hits
-    bool   fMissFirstPoint;  //Do not use any hits from the first wire.
-    bool   fScaleWithEnergy;
-    float  fEnergyLengthConst;
-    std::string fShowerEnergyInputLabel;
-    std::string fShowerStartPositionInputLabel;
-    std::string fInitialTrackHitsInputLabel;
-    std::string fShowerDirectionInputLabel;
-    std::string fShowerdEdxOutputLabel;
-    std::string fShowerBestPlaneOutputLabel;
+    private:
+
+      //Define the services and algorithms
+      art::ServiceHandle<geo::Geometry> fGeom;
+      calo::CalorimetryAlg              fCalorimetryAlg;
+
+      //fcl parameters.
+      double fdEdxTrackLength,dEdxTrackLength; //Max length from a hit can be to the start point in cm.
+      bool   fMaxHitPlane;     //Set the best planes as the one with the most hits
+      bool   fMissFirstPoint;  //Do not use any hits from the first wire.
+      bool   fScaleWithEnergy;
+      float  fEnergyLengthConst;
+      std::string fShowerEnergyInputLabel;
+      std::string fShowerStartPositionInputLabel;
+      std::string fInitialTrackHitsInputLabel;
+      std::string fShowerDirectionInputLabel;
+      std::string fShowerdEdxOutputLabel;
+      std::string fShowerBestPlaneOutputLabel;
   };
 
 
@@ -87,17 +87,17 @@ namespace ShowerRecoTools{
   }
 
   int ShowerStandardCalodEdx::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-					       art::Event& Event,
-					       reco::shower::ShowerElementHolder& ShowerEleHolder
-					       ){
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder
+      ){
 
     dEdxTrackLength=fdEdxTrackLength;
 
     //Check if the user want to try sclaing the paramters with respect to energy.
     if(fScaleWithEnergy){
       if(!ShowerEleHolder.CheckElement(fShowerEnergyInputLabel)){
-	mf::LogError("fStandardCalodEdx") << "ShowerEnergy not set, returning "<< std::endl;
-	return 1;
+        mf::LogError("fStandardCalodEdx") << "ShowerEnergy not set, returning "<< std::endl;
+        return 1;
       }
       std::vector<double> Energy = {-999,-999,-999};
       ShowerEleHolder.GetElement(fShowerEnergyInputLabel,Energy);
@@ -106,9 +106,9 @@ namespace ShowerRecoTools{
       //Assume that the max energy is the correct energy as our clustering is currently poo.
       double max_energy =  *max_element(std::begin(Energy), std::end(Energy))/1000;
       dEdxTrackLength     += max_energy*fEnergyLengthConst*fdEdxTrackLength;
-      }
+    }
 
-    
+
 
     // Shower dEdx calculation
     if(!ShowerEleHolder.CheckElement(fShowerStartPositionInputLabel)){
@@ -154,7 +154,7 @@ namespace ShowerRecoTools{
       geo::TPCID TPC = hitWire.asTPCID();
 
       //only get hits from the same TPC as the vertex
-      if (TPC==vtxTPC){  
+      if (TPC==vtxTPC){
         (trackHits.at(hitWire.Plane)).push_back(hit);
       }
     }
@@ -175,7 +175,7 @@ namespace ShowerRecoTools{
         double pitch = 0;
 
 
-	//Calculate the pitch
+        //Calculate the pitch
         double wirepitch = fGeom->WirePitch(trackPlaneHits.at(0)->WireID().planeID());
         double angleToVert = fGeom->WireAngleToVertical(fGeom->Plane(plane).View(),
             trackPlaneHits[0]->WireID().planeID()) - 0.5*TMath::Pi();
@@ -198,7 +198,7 @@ namespace ShowerRecoTools{
               continue;
             }
 
-	    //Ignore hits that are too far away.
+            //Ignore hits that are too far away.
             if (std::abs((w1-w0)*pitch)<dEdxTrackLength){
               vQ.push_back(hit->Integral());
               totQ += hit->Integral();
@@ -214,11 +214,11 @@ namespace ShowerRecoTools{
               bestPlane = plane;
             }
 
-	    //Get the median and calculate the dEdx using the algorithm.
+            //Get the median and calculate the dEdx using the algorithm.
             double dQdx = TMath::Median(vQ.size(), &vQ[0])/pitch;
             dEdx = fCalorimetryAlg.dEdx_AREA(dQdx, avgT/nhits, trackPlaneHits[0]->WireID().Plane);
 
-	    if (isinf(dEdx)) {
+            if (isinf(dEdx)) {
               dEdx=-999;
             };
 
