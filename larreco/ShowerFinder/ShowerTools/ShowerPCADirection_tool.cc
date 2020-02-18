@@ -126,7 +126,7 @@ namespace ShowerRecoTools {
       return 1;
     }
 
-    art::FindManyP<recob::SpacePoint> fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+    art::FindManyP<recob::SpacePoint>& fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
         pfpHandle, Event, fPFParticleModuleLabel);
     // art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
 
@@ -141,7 +141,7 @@ namespace ShowerRecoTools {
       throw cet::exception("ShowerPCADirection") << "Could not configure the spacepoint handle. Something is configured incorrectly. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Hit> fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
+    art::FindManyP<recob::Hit>& fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
         spHandle, Event, fPFParticleModuleLabel);
     // art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
     if(!fmh.isValid()){

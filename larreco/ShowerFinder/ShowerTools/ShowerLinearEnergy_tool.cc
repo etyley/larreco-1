@@ -104,13 +104,13 @@ namespace ShowerRecoTools {
       throw cet::exception("ShowerLinearEnergy") << "Could not get the pandora clusters. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Cluster> fmc = ShowerEleHolder.GetFindManyP<recob::Cluster>(
+    art::FindManyP<recob::Cluster>& fmc = ShowerEleHolder.GetFindManyP<recob::Cluster>(
         pfpHandle, Event, fPFParticleModuleLabel);
     // art::FindManyP<recob::Cluster> fmc(pfpHandle, Event, fPFParticleModuleLabel);
     std::vector<art::Ptr<recob::Cluster> > clusters = fmc.at(pfparticle.key());
 
     //Get the hit association
-    art::FindManyP<recob::Hit> fmhc = ShowerEleHolder.GetFindManyP<recob::Hit>(
+    art::FindManyP<recob::Hit>& fmhc = ShowerEleHolder.GetFindManyP<recob::Hit>(
         clusHandle, Event, fPFParticleModuleLabel);
     // art::FindManyP<recob::Hit> fmhc(clusHandle, Event, fPFParticleModuleLabel);
 

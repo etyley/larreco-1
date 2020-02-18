@@ -154,7 +154,7 @@ namespace ShowerRecoTools{
     }
 
     // Get the spacepoint - PFParticle assn
-    art::FindManyP<recob::SpacePoint> fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+    art::FindManyP<recob::SpacePoint>& fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
         pfpHandle, Event, fPFParticleModuleLabel);
     if (!fmspp.isValid()){
       throw cet::exception("Shower3DTrackHitFinder") << "Trying to get the spacepoint and failed. Something is not configured correctly. Stopping ";
@@ -169,8 +169,9 @@ namespace ShowerRecoTools{
     }
 
     // Get the hits associated with the space points
-    art::FindManyP<recob::Hit> fmhsp = ShowerEleHolder.GetFindManyP<recob::Hit>(
+    art::FindManyP<recob::Hit>& fmhsp = ShowerEleHolder.GetFindManyP<recob::Hit>(
         spHandle, Event, fPFParticleModuleLabel);
+
     // art::FindOneP<recob::Hit> fohsp(spHandle, Event, fPFParticleModuleLabel);
     if(!fmhsp.isValid()){
       // if(!fohsp.isValid()){
@@ -219,7 +220,7 @@ namespace ShowerRecoTools{
       // Make a vector to hold the output space points
       std::vector<art::Ptr<recob::SpacePoint> > trackSpacePoints;
 
-      for (auto spacePoint : spacePoints){
+      for (const auto& spacePoint : spacePoints){
         // Calculate the projection along direction and perpendicular distance
         // from "axis" of shower
         double proj = IShowerTool::GetTRACSAlg().SpacePointProjection(spacePoint,

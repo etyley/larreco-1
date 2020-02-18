@@ -75,29 +75,6 @@ namespace ShowerRecoTools{
       art::Event& Event,
       reco::shower::ShowerElementHolder& ShowerEleHolder){
 
-    //Get the vertices.
-    art::Handle<std::vector<recob::Vertex> > vtxHandle =
-      ShowerEleHolder.GetHandle<recob::Vertex>(Event, fPFParticleModuleLabel);
-    if (!vtxHandle.isValid()){
-      throw cet::exception("ShowerPFPVertexStartPosition") << "Could not get the pandora vertices. Something is not configured correctly. Please give the correct pandora module label. Stopping";
-      return 1;
-    }
-
-    //Get the spacepoints handle and the hit assoication
-    art::Handle<std::vector<recob::SpacePoint> > spHandle =
-      ShowerEleHolder.GetHandle<recob::SpacePoint>(Event, fPFParticleModuleLabel);
-    if (!spHandle.isValid()){
-      throw cet::exception("ShowerPFPVertexStartPosition") << "Coquld not configure the spacepoint handle. Something is configured incorrectly. Stopping";
-      return 1;
-    }
-    art::FindManyP<recob::Hit> fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
-        spHandle, Event, fPFParticleModuleLabel);
-    // art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
-    if(!fmh.isValid()){
-      throw cet::exception("ShowerPFPVertexStartPosition") << "Spacepoint and hit association not valid. Stopping.";
-      return 1;
-    }
-
     // Get the assocated pfParicle vertex PFParticles
     art::Handle<std::vector<recob::PFParticle> > pfpHandle =
       ShowerEleHolder.GetHandle<recob::PFParticle>(Event, fPFParticleModuleLabel);
@@ -105,7 +82,8 @@ namespace ShowerRecoTools{
       throw cet::exception("ShowerPFPVertexStartPosition") << "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
-    art::FindManyP<recob::Vertex> fmv = ShowerEleHolder.GetFindManyP<recob::Vertex>(
+
+    art::FindManyP<recob::Vertex>& fmv = ShowerEleHolder.GetFindManyP<recob::Vertex>(
         pfpHandle, Event, fPFParticleModuleLabel);
     // art::FindManyP<recob::Vertex> fmv(pfpHandle, Event, fPFParticleModuleLabel);
     if(!fmv.isValid()){
@@ -143,10 +121,26 @@ namespace ShowerRecoTools{
       TVector3 ShowerDirection = {-999, -999, -999};
       ShowerEleHolder.GetElement(fShowerDirectionInputLabel,ShowerDirection);
 
-      art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
+      art::FindManyP<recob::SpacePoint>& fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+          pfpHandle, Event, fPFParticleModuleLabel);
 
       if (!fmspp.isValid()){
         throw cet::exception("ShowerPFPVertexStartPosition") << "Trying to get the spacepoints and failed. Something is not configured correctly. Stopping ";
+        return 1;
+      }
+
+      //Get the spacepoints handle and the hit assoication
+      art::Handle<std::vector<recob::SpacePoint> > spHandle =
+        ShowerEleHolder.GetHandle<recob::SpacePoint>(Event, fPFParticleModuleLabel);
+      if (!spHandle.isValid()){
+        throw cet::exception("ShowerPFPVertexStartPosition") << "Coquld not configure the spacepoint handle. Something is configured incorrectly. Stopping";
+        return 1;
+      }
+      art::FindManyP<recob::Hit>& fmh = ShowerEleHolder.GetFindManyP<recob::Hit>(
+          spHandle, Event, fPFParticleModuleLabel);
+      // art::FindManyP<recob::Hit> fmh(spHandle, Event, fPFParticleModuleLabel);
+      if(!fmh.isValid()){
+        throw cet::exception("ShowerPFPVertexStartPosition") << "Spacepoint and hit association not valid. Stopping.";
         return 1;
       }
 

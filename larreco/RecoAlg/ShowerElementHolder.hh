@@ -98,6 +98,13 @@ class reco::shower::ShowerElementAccessor : public reco::shower::ShowerElementBa
     }
 
     //Return a copy of the shower element.
+    T& GetShowerElementRef(){
+      if(!this->elementPtr){
+        throw cet::exception("ShowerElementHolder") << "The element that is being accessed is not set" << std::endl;
+      }
+      return element;
+    }
+
     T GetShowerElement(){
       if(!this->elementPtr){
         throw cet::exception("ShowerElementHolder") << "The element that is being accessed is not set" << std::endl;
@@ -277,14 +284,14 @@ class reco::shower::ShowerElementHolder{
 
     //Alternative get function that returns the object. Not recommended.
     template <class T >
-      T GetEventElement(std::string Name){
+      T& GetEventElement(std::string Name){
         if (eventdataproducts.find(Name) != eventdataproducts.end()){
           if(eventdataproducts[Name]->CheckShowerElement()){
             reco::shower::ShowerElementAccessor<T> *eventprop = dynamic_cast<reco::shower::ShowerElementAccessor<T> *>(eventdataproducts[Name].get());
             if(eventprop == NULL){
               throw cet::exception("ShowerElementHolder") << "Trying to get Element: " << Name << ". This element you are filling is not the correct type" << std::endl;
             }
-            return eventprop->GetShowerElement();
+            return eventprop->GetShowerElementRef();
           }
         }
         throw cet::exception("ShowerElementHolder") << "Trying to get Element: " << Name << ". This element does not exist in the element holder" << std::endl;
@@ -611,7 +618,7 @@ class reco::shower::ShowerElementHolder{
       }
 
     template <class T1, class T2>
-      art::FindManyP<T1> GetFindManyP(art::Handle<std::vector<T2> > &handle,
+      art::FindManyP<T1>& GetFindManyP(art::Handle<std::vector<T2> > &handle,
           art::Event &evt, art::InputTag &moduleTag){
 
         //TODO: tidy up
@@ -624,13 +631,13 @@ class reco::shower::ShowerElementHolder{
         std::string typeName1 = getType(test1);
         std::string typeName2 = getType(test2);
 
-        std::string name = moduleTag.label() + typeName2 + typeName1;
+        std::string name = "FMP" + moduleTag.label() + typeName2 + typeName1;
 
         // std::cout<<"Test: Name: "<<name<<std::endl;
 
         if (CheckEventElement(name)){
           // std::cout<<"Test: Found!"<<std::endl;
-          art::FindManyP<T1> findManyP = GetEventElement<art::FindManyP<T1> >(name);
+          art::FindManyP<T1>& findManyP = GetEventElement<art::FindManyP<T1> >(name);
           if (findManyP.isValid()){
             return findManyP;
           } else {
@@ -638,10 +645,11 @@ class reco::shower::ShowerElementHolder{
           }
         } else {
           // std::cout<<"Test: Not Found"<<std::endl;
+          std::cout<<"Test: Creating: "<<name<<std::endl;
           art::FindManyP<T1> findManyP(handle, evt, moduleTag);
           if (findManyP.isValid()){
             SetEventElement(findManyP, name);
-            return findManyP;
+            return GetEventElement<art::FindManyP<T1> >(name);
           } else {
             throw cet::exception("ShowerElementHolder") << "FindManyP is not valid" << std::endl;
           }
@@ -662,7 +670,7 @@ class reco::shower::ShowerElementHolder{
         std::string typeName1 = getType(test1);
         std::string typeName2 = getType(test2);
 
-        std::string name = moduleTag.label() + typeName2 + typeName1;
+        std::string name = "FOP" + moduleTag.label() + typeName2 + typeName1;
 
         // std::cout<<"Test: Name: "<<name<<std::endl;
 
