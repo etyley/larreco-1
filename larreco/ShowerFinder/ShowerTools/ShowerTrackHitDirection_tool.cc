@@ -34,42 +34,42 @@ namespace ShowerRecoTools {
 
   class ShowerTrackHitDirection:IShowerTool {
 
-  public:
+    public:
 
-    ShowerTrackHitDirection(const fhicl::ParameterSet& pset);
+      ShowerTrackHitDirection(const fhicl::ParameterSet& pset);
 
-    ~ShowerTrackHitDirection();
+      ~ShowerTrackHitDirection();
 
-    //Calculate the shower direction from the initial track hits.
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event,
-			 reco::shower::ShowerElementHolder& ShowerEleHolder
-			 ) override;
+      //Calculate the shower direction from the initial track hits.
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder
+          ) override;
 
-  private:
+    private:
 
-    //fcl
-    bool fUsePandoraVertex; //Direction from point defined as (Position of Hit - Vertex)
-                            //rather than (Position of Hit - Track Start Point)  
-    art::InputTag fHitModuleLabel;
-    art::InputTag fPFParticleModuleLabel;
-    
-    std::string fInitialTrackHitsInputLabel;
-    std::string fShowerStartPositionInputLabel;
-    std::string fInitialTrackInputLabel;
-    std::string fShowerDirectionOutputLabel;
+      //fcl
+      bool fUsePandoraVertex; //Direction from point defined as (Position of Hit - Vertex)
+      //rather than (Position of Hit - Track Start Point)
+      art::InputTag fHitModuleLabel;
+      art::InputTag fPFParticleModuleLabel;
+
+      std::string fInitialTrackHitsInputLabel;
+      std::string fShowerStartPositionInputLabel;
+      std::string fInitialTrackInputLabel;
+      std::string fShowerDirectionOutputLabel;
   };
 
 
   ShowerTrackHitDirection::ShowerTrackHitDirection(const fhicl::ParameterSet& pset)
     :  IShowerTool(pset.get<fhicl::ParameterSet>("BaseTools")),
-       fUsePandoraVertex(pset.get<bool>         ("UsePandoraVertex")),
-       fHitModuleLabel(pset.get<art::InputTag>("HitModuleLabel")),
-       fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
-       fInitialTrackHitsInputLabel(pset.get<std::string>("InitialTrackHitsInputLabel")),
-       fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
-       fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
-       fShowerDirectionOutputLabel(pset.get<std::string>("ShowerDirectionOutputLabel"))
+    fUsePandoraVertex(pset.get<bool>         ("UsePandoraVertex")),
+    fHitModuleLabel(pset.get<art::InputTag>("HitModuleLabel")),
+    fPFParticleModuleLabel(pset.get<art::InputTag>("PFParticleModuleLabel")),
+    fInitialTrackHitsInputLabel(pset.get<std::string>("InitialTrackHitsInputLabel")),
+    fShowerStartPositionInputLabel(pset.get<std::string>("ShowerStartPositionInputLabel")),
+    fInitialTrackInputLabel(pset.get<std::string>("InitialTrackInputLabel")),
+    fShowerDirectionOutputLabel(pset.get<std::string>("ShowerDirectionOutputLabel"))
   {
   }
 
@@ -78,8 +78,8 @@ namespace ShowerRecoTools {
   }
 
   int ShowerTrackHitDirection::CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-						art::Event& Event,
-						reco::shower::ShowerElementHolder& ShowerEleHolder){
+      art::Event& Event,
+      reco::shower::ShowerElementHolder& ShowerEleHolder){
 
     //Check the Track Hits has been defined
     if(!ShowerEleHolder.CheckElement(fInitialTrackHitsInputLabel)){
@@ -119,7 +119,8 @@ namespace ShowerRecoTools {
     }
 
     //Get the spacepoint handle. We need to do this in 3D.
-    art::FindManyP<recob::SpacePoint> fmsp(hitHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::SpacePoint>& fmsp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+        hitHandle, Event, fPFParticleModuleLabel);
     if(!fmsp.isValid()){
       throw cet::exception("ShowerTrackHitDirection") << "Spacepoint and hit association not valid. Stopping.";
       return 1;

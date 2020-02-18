@@ -51,7 +51,7 @@ namespace ShowerRecoTools{
           art::Event& Event,
           reco::shower::ShowerElementHolder& ShowerEleHolder) override;
 
-    void FinddEdxLength(std::vector<double>& dEdx_vec, std::vector<double>& dEdx_val);
+      void FinddEdxLength(std::vector<double>& dEdx_vec, std::vector<double>& dEdx_val);
 
     private:
 
@@ -77,7 +77,7 @@ namespace ShowerRecoTools{
       bool fUseMedian;        //Use the median value as the dEdx rather than the mean.
       bool fCutStartPosition; //Remove hits using MinDistCutOff from the vertex as well.
       bool fScaleWithEnergy;
-      float fEnergyResidualConst; 
+      float fEnergyResidualConst;
       float fEnergyLengthConst;
 
       art::InputTag fPFParticleModuleLabel;
@@ -132,19 +132,19 @@ namespace ShowerRecoTools{
     //Check if the user want to try sclaing the paramters with respect to energy.
     if(fScaleWithEnergy){
       if(!ShowerEleHolder.CheckElement(fShowerEnergyInputLabel)){
-	mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
-	return 1;
+        mf::LogError("ShowerResidualTrackHitFinder") << "ShowerEnergy not set, returning "<< std::endl;
+        return 1;
       }
       std::vector<double> Energy = {-999,-999,-999};
       ShowerEleHolder.GetElement(fShowerEnergyInputLabel,Energy);
-      
+
       //We should change this
       //Assume that the max energy is the correct energy as our clustering is currently poo.
       double max_energy =  *max_element(std::begin(Energy), std::end(Energy))/1000;
       MaxDist          += max_energy*fEnergyResidualConst*fMaxDist;
       dEdxTrackLength  += max_energy*fEnergyLengthConst*fdEdxTrackLength;
 
-      }
+    }
 
 
     // Shower dEdx calculation
@@ -178,7 +178,8 @@ namespace ShowerRecoTools{
     }
 
     // Get the hits associated with the space points
-    art::FindManyP<recob::Hit> fmsp(spHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Hit>& fmsp = ShowerEleHolder.GetFindManyP<recob::Hit>(
+        spHandle, Event, fPFParticleModuleLabel);
     if(!fmsp.isValid()){
       throw cet::exception("ShowerSlidingStandardCalodEdx") << "Spacepoint and hit association not valid. Stopping.";
       return 1;
@@ -300,7 +301,7 @@ namespace ShowerRecoTools{
       ++num_hits[planeid.Plane];
 
       if((TrajPosition-TrajPositionStart).Mag() > dEdxTrackLength){continue;}
-      
+
 
       //If we still exist then we can be used in the calculation. Calculate the 3D pitch
       double trackpitch = (TrajDirection*(wirepitch/TrajDirection.Dot(PlaneDirection))).Mag();
@@ -344,17 +345,17 @@ namespace ShowerRecoTools{
     int best_plane = -999;
     for(auto const& num_hits_plane: num_hits){
       if(num_hits_plane.second > max_hits){
-	best_plane = num_hits_plane.first;
+        best_plane = num_hits_plane.first;
         max_hits   = num_hits_plane.second;
       }
     }
-    
+
 
     for(auto& dEdx_plane: dEdx_vec){
       FinddEdxLength(dEdx_plane.second, dEdx_vec_cut[dEdx_plane.first]);
     }
 
-    
+
     //Never have the stats to do a landau fit and get the most probable value. User decides if they want the median value or the mean.
     std::vector<double> dEdx_val;
     std::vector<double> dEdx_valErr;
@@ -379,12 +380,12 @@ namespace ShowerRecoTools{
         dEdx_val.push_back(dEdx_mean/(float)(dEdx_plane.second).size());
       }
     }
-    
+
     std::cout << "#### dEdx vector ###" << std::endl;
     for(auto const& plane: dEdx_vec_cut){
-      std::cout << "#Plane: " << plane.first << " #" << std::endl; 
+      std::cout << "#Plane: " << plane.first << " #" << std::endl;
       for(auto const& dEdx: plane.second){
-	std::cout << "dEdx: " << dEdx << std::endl;
+        std::cout << "dEdx: " << dEdx << std::endl;
       }
     }
 
@@ -403,11 +404,11 @@ namespace ShowerRecoTools{
       dEdx_val = dEdx_vec;
       return;
     }
-    
-    
+
+
     std::cout << "why am I running" << std::endl;
 
-    //Can only do this with 4 hits. 
+    //Can only do this with 4 hits.
     if(dEdx_vec.size() < 4){
       dEdx_val = dEdx_vec;
       return;
@@ -421,75 +422,75 @@ namespace ShowerRecoTools{
     if(dEdx_vec[1] > fdEdxCut){++upperbound_int;}
     if(dEdx_vec[2] > fdEdxCut){++upperbound_int;}
     if(upperbound_int > 1){upperbound = true;}
-    
+
 
     dEdx_val.push_back(dEdx_vec[0]);
     dEdx_val.push_back(dEdx_vec[1]);
     dEdx_val.push_back(dEdx_vec[2]);
-    
-    for(unsigned int dEdx_iter=2; dEdx_iter<dEdx_vec.size(); ++dEdx_iter){  
-      
+
+    for(unsigned int dEdx_iter=2; dEdx_iter<dEdx_vec.size(); ++dEdx_iter){
+
       //The Function of dEdx as a function of E is flat above ~10 MeV.
-      //We are looking for a jump up (or down) above the ladau width in the dEx 
-      //to account account for pair production. 
+      //We are looking for a jump up (or down) above the ladau width in the dEx
+      //to account account for pair production.
       //Dom Estimates that the somwhere above 0.28 MeV will be a good cut but 999 will prevent this stage.
       double dEdx = dEdx_vec[dEdx_iter];
 
       //We are really poo at physics and so attempt to find the pair production
       if(upperbound){
-	if(dEdx > fdEdxCut){
-	  dEdx_val.push_back(dEdx);
-	  std::cout << "Adding dEdx: "<< dEdx<< std::endl;
-	  continue;
-	}
-	else{
-	  //Maybe its a landau fluctation lets try again.
-	  if(dEdx_iter < dEdx_vec.size()-1){
-	    if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
-	      std::cout << "Next dEdx hit is good removing hit"<< dEdx<< std::endl;
-	      continue;
-	    }
-	  }
-	  //I'll let one more value 
-	  if(dEdx_iter<dEdx_vec.size()-2){
-	    if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
-	      std::cout << "Next Next dEdx hit is good removing hit"<< dEdx<< std::endl;
-	      continue;
-	    }
-	  }
-	  //We are hopefully we have one of our electrons has died.
-	  break;
-	}
+        if(dEdx > fdEdxCut){
+          dEdx_val.push_back(dEdx);
+          std::cout << "Adding dEdx: "<< dEdx<< std::endl;
+          continue;
+        }
+        else{
+          //Maybe its a landau fluctation lets try again.
+          if(dEdx_iter < dEdx_vec.size()-1){
+            if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
+              std::cout << "Next dEdx hit is good removing hit"<< dEdx<< std::endl;
+              continue;
+            }
+          }
+          //I'll let one more value
+          if(dEdx_iter<dEdx_vec.size()-2){
+            if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
+              std::cout << "Next Next dEdx hit is good removing hit"<< dEdx<< std::endl;
+              continue;
+            }
+          }
+          //We are hopefully we have one of our electrons has died.
+          break;
+        }
       }
       else{
-	if(dEdx < fdEdxCut){
-	  dEdx_val.push_back(dEdx);
-	  std::cout << "Adding dEdx: "<< dEdx<< std::endl;
-	  continue;
-	}
-	else{
-	  //Maybe its a landau fluctation lets try again.
-	  if(dEdx_iter < dEdx_vec.size()-1){
-	    if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
-	      std::cout << "Next dEdx hit is good removing hit "<< dEdx<< std::endl;
-	      continue;
-	    }
-	  }
-	  //I'll let one more value 
-	  if(dEdx_iter < dEdx_vec.size()-2){
-	    if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
-	      std::cout << "Next Next dEdx hit is good removing hit "<< dEdx<< std::endl;
-	      continue;
-	    }
-	  }
-	  //We are hopefully in the the pair production zone. 
-	  break;
-	}
+        if(dEdx < fdEdxCut){
+          dEdx_val.push_back(dEdx);
+          std::cout << "Adding dEdx: "<< dEdx<< std::endl;
+          continue;
+        }
+        else{
+          //Maybe its a landau fluctation lets try again.
+          if(dEdx_iter < dEdx_vec.size()-1){
+            if(dEdx_vec[dEdx_iter+1] > fdEdxCut){
+              std::cout << "Next dEdx hit is good removing hit "<< dEdx<< std::endl;
+              continue;
+            }
+          }
+          //I'll let one more value
+          if(dEdx_iter < dEdx_vec.size()-2){
+            if(dEdx_vec[dEdx_iter+2] > fdEdxCut){
+              std::cout << "Next Next dEdx hit is good removing hit "<< dEdx<< std::endl;
+              continue;
+            }
+          }
+          //We are hopefully in the the pair production zone.
+          break;
+        }
       }
     }
     return;
   }
-  
+
 }
 
 DEFINE_ART_CLASS_TOOL(ShowerRecoTools::ShowerSlidingStandardCalodEdx)

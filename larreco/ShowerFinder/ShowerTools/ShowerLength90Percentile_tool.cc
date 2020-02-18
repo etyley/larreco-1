@@ -74,7 +74,8 @@ namespace ShowerRecoTools {
     }
 
     // Get the spacepoint - PFParticle assn
-    art::FindManyP<recob::SpacePoint> fmspp(pfpHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::SpacePoint>& fmspp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>(
+        pfpHandle, Event, fPFParticleModuleLabel);
     if (!fmspp.isValid()){
       throw cet::exception("ShowerResidualTrackHitFinder") << "Trying to get the spacepoint and failed. Something is not configured correctly. Stopping ";
       return 1;

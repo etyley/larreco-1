@@ -33,43 +33,43 @@
 namespace ShowerRecoTools{
 
   class Shower2DLinearRegressionTrackHitFinder:IShowerTool {
-  public:
-    
-    Shower2DLinearRegressionTrackHitFinder(const fhicl::ParameterSet& pset);
-    
-    ~Shower2DLinearRegressionTrackHitFinder();
-    
-    //Calculate the 2D initial track hits
-    int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
-			 art::Event& Event,
-			 reco::shower::ShowerElementHolder& ShowerEleHolder
-			 ) override;
-    
-  private:
-    
-    //Function to find the 
-    std::vector<art::Ptr<recob::Hit> > FindInitialTrackHits(std::vector<art::Ptr<recob::Hit> >& hits);
-    
-    //Function to perform a weighted regression fit.
-    Int_t WeightedFit(const Int_t n, const Double_t *x, const Double_t *y,
-		      const Double_t *w,  Double_t *parm);
-    
-    //fcl parameters
-    unsigned int               fNfitpass;           //Number of time to fit the straight
-                                                    //line the hits.
-    std::vector<unsigned int>  fNfithits;           //Max number of hits to fit to.
-    std::vector<double>        fToler;              //Tolerance or each interaction. 
-                                                    //Defined as the perpendicualar 
-                                                    //distance from the best fit line.
-    bool                       fApplyChargeWeight;  //Apply charge weighting to the fit.
-    art::InputTag              fPFParticleModuleLabel;
-    art::InputTag              fHitsModuleLabel;
-    std::string                fShowerStartPositionInputLabel;
-    std::string                fShowerDirectionInputLabel;
-    std::string                fInitialTrackHitsOutputLabel;
-    std::string                fInitialTrackSpacePointsOutputLabel;
+    public:
+
+      Shower2DLinearRegressionTrackHitFinder(const fhicl::ParameterSet& pset);
+
+      ~Shower2DLinearRegressionTrackHitFinder();
+
+      //Calculate the 2D initial track hits
+      int CalculateElement(const art::Ptr<recob::PFParticle>& pfparticle,
+          art::Event& Event,
+          reco::shower::ShowerElementHolder& ShowerEleHolder
+          ) override;
+
+    private:
+
+      //Function to find the
+      std::vector<art::Ptr<recob::Hit> > FindInitialTrackHits(std::vector<art::Ptr<recob::Hit> >& hits);
+
+      //Function to perform a weighted regression fit.
+      Int_t WeightedFit(const Int_t n, const Double_t *x, const Double_t *y,
+          const Double_t *w,  Double_t *parm);
+
+      //fcl parameters
+      unsigned int               fNfitpass;           //Number of time to fit the straight
+      //line the hits.
+      std::vector<unsigned int>  fNfithits;           //Max number of hits to fit to.
+      std::vector<double>        fToler;              //Tolerance or each interaction.
+      //Defined as the perpendicualar
+      //distance from the best fit line.
+      bool                       fApplyChargeWeight;  //Apply charge weighting to the fit.
+      art::InputTag              fPFParticleModuleLabel;
+      art::InputTag              fHitsModuleLabel;
+      std::string                fShowerStartPositionInputLabel;
+      std::string                fShowerDirectionInputLabel;
+      std::string                fInitialTrackHitsOutputLabel;
+      std::string                fInitialTrackSpacePointsOutputLabel;
   };
-  
+
 
   Shower2DLinearRegressionTrackHitFinder::Shower2DLinearRegressionTrackHitFinder(
       const fhicl::ParameterSet& pset) :
@@ -120,20 +120,21 @@ namespace ShowerRecoTools{
     // Get the assocated pfParicle vertex PFParticles
     art::Handle<std::vector<recob::PFParticle> > pfpHandle;
     if (!Event.getByLabel(fPFParticleModuleLabel, pfpHandle)){
-      throw cet::exception("Shower2DLinearRegressionTrackHitFinder") 
-	<< "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
+      throw cet::exception("Shower2DLinearRegressionTrackHitFinder")
+        << "Could not get the pandora pf particles. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
 
     //Get the clusters
     art::Handle<std::vector<recob::Cluster> > clusHandle;
     if (!Event.getByLabel(fPFParticleModuleLabel, clusHandle)){
-      throw cet::exception("Shower2DLinearRegressionTrackHitFinder") 
-	<< "Could not get the pandora clusters. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
+      throw cet::exception("Shower2DLinearRegressionTrackHitFinder")
+        << "Could not get the pandora clusters. Something is not cofingured coreectly Please give the correct pandoa module label. Stopping";
       return 1;
     }
 
-    art::FindManyP<recob::Cluster> fmc(pfpHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Cluster>& fmc = ShowerEleHolder.GetFindManyP<recob::Cluster>
+      (pfpHandle, Event, fPFParticleModuleLabel);
     std::vector<art::Ptr<recob::Cluster> > clusters = fmc.at(pfparticle.key());
 
     if(clusters.size()<2){
@@ -143,7 +144,8 @@ namespace ShowerRecoTools{
     }
 
     //Get the hit association
-    art::FindManyP<recob::Hit> fmhc(clusHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Hit> fmhc = ShowerEleHolder.GetFindManyP<recob::Hit>
+      (clusHandle, Event, fPFParticleModuleLabel);
     std::map<geo::PlaneID, std::vector<art::Ptr<recob::Hit> > > plane_clusters;
     //Loop over the clusters in the plane and get the hits
     for(auto const& cluster: clusters){
@@ -191,7 +193,8 @@ namespace ShowerRecoTools{
     }
 
     //get the sp<->hit association
-    art::FindManyP<recob::SpacePoint> fmsp(hitHandle,Event,fPFParticleModuleLabel);
+    art::FindManyP<recob::SpacePoint> fmsp = ShowerEleHolder.GetFindManyP<recob::SpacePoint>
+      (hitHandle,Event,fPFParticleModuleLabel);
     if(!fmsp.isValid()){
       throw cet::exception("Shower2DLinearRegressionTrackHitFinder")
         << "Spacepoint and hit association not valid. Stopping." << std::endl;
