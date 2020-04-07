@@ -103,7 +103,7 @@ namespace calo{
   }
   double CalorimetryAlg::dEdx_AREA(art::Ptr< recob::Hit >  hit, double pitch, double T0, double Efield) const
   {
-    return dEdx_AREA(hit->Integral()/pitch, hit->PeakTime(), hit->WireID().Plane, T0);
+    return dEdx_AREA(hit->Integral()/pitch, hit->PeakTime(), hit->WireID().Plane, T0, Efield);
   }
 
   // ----------------------------------------------------------------------------------//
@@ -113,7 +113,7 @@ namespace calo{
   }
   double CalorimetryAlg::dEdx_AREA(recob::Hit const&  hit, double pitch, double T0, double Efield) const
   {
-    return dEdx_AREA(hit.Integral()/pitch, hit.PeakTime(), hit.WireID().Plane, T0);
+    return dEdx_AREA(hit.Integral()/pitch, hit.PeakTime(), hit.WireID().Plane, T0, Efield);
   }
 
   // ----------------------------------------------------------------------------------//
@@ -124,7 +124,7 @@ namespace calo{
   double CalorimetryAlg::dEdx_AREA(double dQ,double time, double pitch, unsigned int plane, double T0, double Efield) const
   {
     double dQdx   = dQ/pitch;           // in ADC/cm
-    return dEdx_AREA(dQdx, time, plane, T0);
+    return dEdx_AREA(dQdx, time, plane, T0, Efield);
   }
 
   // ----------------------------------------------------------------------------------//
@@ -139,7 +139,7 @@ namespace calo{
     fADCtoEl = fCalAreaConstants[plane];
 
     double dQdx_e = dQdx/fADCtoEl;  // Conversion from ADC/cm to e/cm
-    return dEdx_from_dQdx_e(dQdx_e, time, T0);
+    return dEdx_from_dQdx_e(dQdx_e, time, T0, Efield);
   }
 
   // ----------------- apply Lifetime and recombination correction.  -----------------//
