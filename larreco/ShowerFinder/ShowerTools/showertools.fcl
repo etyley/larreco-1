@@ -39,6 +39,14 @@ showerlinearenergy:{
     ShowerBestPlaneOutputLabel: "ShowerOverallBestPlane"
     }
 
+ showerrecoenergyfromnumelectrons:{
+    tool_type:  ShowerRecoEnergyfromNumElectrons
+    BaseTools: @local::showerbasetools
+    CalorimetryAlg: @local::sbnd_calorimetryalgmc #calorimetry fcls get overwritten in sbnd # @local::standard_calorimetryalgmc
+    PFParticleModuleLabel: "pandora"
+    }
+
+
 shower2Dlinearregressiontrackhitfinder:{
     tool_type:             Shower2DLinearRegressionTrackHitFinder
     BaseTools:             @local::showerbasetools
