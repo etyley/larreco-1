@@ -1,7 +1,8 @@
 #include "larreco/RecoAlg/TRACSAlg.h"
 
 shower::TRACSAlg::TRACSAlg(const fhicl::ParameterSet& pset):
-  fDetProp(lar::providerFrom<detinfo::DetectorPropertiesService>())
+  fDetProp(lar::providerFrom<detinfo::DetectorPropertiesService>()),
+  fSCE(lar::providerFrom<spacecharge::SpaceChargeService>())
 {
   fUseCollectionOnly      = pset.get<bool>("UseCollectionOnly");
   fPFParticleModuleLabel  = pset.get<art::InputTag> ("PFParticleModuleLabel");
@@ -267,15 +268,15 @@ double shower::TRACSAlg::TotalCorrectedCharge(std::vector<art::Ptr<recob::SpaceP
 
   float TotalCharge = 0;
   for(auto& sp: sps){
-    
+
     TVector3 sp_position = shower::TRACSAlg::SpacePointPosition(sp);
-    
+
     //Get the charge.
     float Charge = shower::TRACSAlg::SpacePointCharge(sp,fmh);
-    
+
     //Get the time of the spacepoint
     float Time = shower::TRACSAlg::SpacePointTime(sp,fmh);
-    
+
     //Correct for the lifetime at the moment.
     Charge *= TMath::Exp((fDetProp->SamplingRate() * Time ) / (fDetProp->ElectronLifetime()*1e3));
 
@@ -358,6 +359,55 @@ double shower::TRACSAlg::SpacePointPerpendiular(art::Ptr<recob::SpacePoint> cons
   return perpLen;
 }
 
+double shower::TRACSAlg::SCECorrectPitch(double const& pitch, TVector3 const& pos,
+    TVector3 const& dir, unsigned int const& TPC) const {
+  geo::Point_t geoPos = geo::Point_t{pos.X(), pos.Y(), pos.z()};
+  geo::Vector_t geoDir = geo::Vector_t{dir.X(), dir.Y(), dir.Z()};
+  return shower::TRACSAlg::SCECorrectPitch(pitch, geoPos, geoDir, TPC);
+}
+double shower::TRACSAlg::SCECorrectPitch(double const& pitch, geo::Point_t const& pos,
+    geo::Vector_t const& dir, unsigned int const& TPC) const {
+
+  if (!fSCE || !fSCE->EnableCalSpatialSCE()){
+    throw cet::exception("TRACSALG") << "Trying to correct SCE pitch when service is not configured"
+      << std::endl;
+  }
+  // Assume the input pos is sce corrected already, find uncorrected pos
+  geo::Point_t uncorrectedPos = pos + fSCE->GetPosOffsets(pos);
+  //Get the size of the correction at pos
+  geo::Vector_t posOffset = fSCE->GetCalPosOffsets(uncorrectedPos, TPC);
+
+  //Get the position of next hit
+  geo::Point_t nextPos = uncorrectedPos + pitch*dir;
+  //Get the offsets at the next pos
+  geo::Vector_t nextPosOffset = fSCE->GetCalPosOffsets(nextPos, TPC);
+
+  //Calculate the corrected pitch
+  geo::Vector_t pitchVec = pitch*dir - posOffset + nextPosOffset;
+
+  return pitchVec.r();
+}
+
+double shower::TRACSAlg::SCECorrectEField(double const& EField, TVector3 const& pos) const {
+  geo::Point_t geoPos = geo::Point_t{pos.X(), pos.Y(), pos.z()};
+  return shower::TRACSAlg::SCECorrectEField(EField, geoPos);
+}
+double shower::TRACSAlg::SCECorrectEField(double const& EField, geo::Point_t const& pos) const {
+
+  // Check the space charge service is properly configured
+  if (!fSCE || !fSCE->EnableSimEfieldSCE()){
+    throw cet::exception("TRACSALG") << "Trying to correct SCE EField when service is not configured"
+      << std::endl;
+  }
+  // Gets relative E field Distortions
+  geo::Vector_t EFieldOffsets = fSCE->GetEfieldOffsets(pos);
+  // Add 1 in X direction as this is the direction of the drift field
+  EFieldOffsets = EFieldOffsets + geo::Vector_t{1, 0, 0};
+  // Convert to Absolute E Field from relative
+  EFieldOffsets = EField * EFieldOffsets;
+  // We only care about the magnitude for recombination
+  return EFieldOffsets.r();
+}
 
 void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
     art::Event const& Event,
@@ -448,10 +498,10 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
   //initialise counter point
   int point = 0;
-  
+
   // Make 3D points for each spacepoint in the shower
   std::unique_ptr<TPolyMarker3D> allPoly = std::unique_ptr<TPolyMarker3D>(new TPolyMarker3D(spacePoints.size()));
-  
+
 
   if(!ShowerEleHolder.CheckElement(fShowerDirectionInputLabel) && !ShowerEleHolder.CheckElement("ShowerStartPosition")){
     mf::LogError("Shower3DTrackFinder") << "Direction not set, returning "<< std::endl;
@@ -469,7 +519,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
     //initialise counter point
     int point = 0;
-  
+
     for (auto spacePoint : spacePoints){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint) - showerStartPosition;
       TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint);
@@ -489,13 +539,13 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
       // Calculate the projection of (point-startpoint) along the direction
       double proj = shower::TRACSAlg::SpacePointProjection(spacePoint, showerStartPosition,
-							   showerDirection);
+          showerDirection);
       //double proj = shower::TRACSAlg::SpacePointProjection(spacePoint, TVector3(0,0,0),
       //    showerDirection);
       if (proj>maxProj) {
-	maxProj = proj;
+        maxProj = proj;
       } else if (proj<minProj) {
-	minProj = proj ;
+        minProj = proj ;
       }
 
     } // loop over spacepoints
@@ -508,7 +558,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
 
     zDirPoints[0] = (showerStartPosition.Z()+minProj*showerDirection.Z());
     zDirPoints[1] = (showerStartPosition.Z()+maxProj*showerDirection.Z());
-  
+
   }
 
   std::unique_ptr<TPolyLine3D> dirPoly = std::unique_ptr<TPolyLine3D> (new TPolyLine3D(2,xDirPoints,yDirPoints,zDirPoints));
@@ -529,7 +579,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
     for (auto spacePoint : trackSpacePoints){
       //TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint) - showerStartPosition;
       TVector3 pos = shower::TRACSAlg::SpacePointPosition(spacePoint);
-      
+
       x = pos.X();
       y = pos.Y();
       z = pos.Z();
@@ -657,7 +707,7 @@ void shower::TRACSAlg::DebugEVD(art::Ptr<recob::PFParticle> const& pfparticle,
     }
   }
 
- 
+
 
   gStyle->SetOptStat(0);
   std::unique_ptr<TH3F> axes = std::unique_ptr<TH3F>(new TH3F("axes","",1,x_min,x_max,1,y_min,y_max,1,z_min,z_max));
