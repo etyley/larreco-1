@@ -42,7 +42,7 @@ showerlinearenergy:{
  showerrecoenergyfromnumelectrons:{
     tool_type:  ShowerRecoEnergyfromNumElectrons
     BaseTools: @local::showerbasetools
-    CalorimetryAlg: @local::sbnd_calorimetryalgmc #calorimetry fcls get overwritten in sbnd # @local::standard_calorimetryalgmc
+    CalorimetryAlg: @local::standard_calorimetryalgmc
     PFParticleModuleLabel: "pandora"
     }
 
