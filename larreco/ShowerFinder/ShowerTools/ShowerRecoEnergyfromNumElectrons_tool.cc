@@ -124,11 +124,15 @@ namespace ShowerRecoTools {
         throw cet::exception("ShowerRecoEnergyfromNumElectrons") << "Could not get the pandora clusters. Something is not configured correctly Please give the correct pandora module label. Stopping";
         return 1;
     }
-    art::FindManyP<recob::Cluster> fmc(pfpHandle, Event, fPFParticleModuleLabel);
+    art::FindManyP<recob::Cluster>& fmc = ShowerEleHolder.GetFindManyP<recob::Cluster>(
+        pfpHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::Cluster> fmc(pfpHandle, Event, fPFParticleModuleLabel);
     std::vector<art::Ptr<recob::Cluster> > clusters = fmc.at(pfparticle.key());
 
-    //Get the hit association for clusters
-    art::FindManyP<recob::Hit> fmhc(clusHandle, Event, fPFParticleModuleLabel);
+    //Get the hit association
+    art::FindManyP<recob::Hit>& fmhc = ShowerEleHolder.GetFindManyP<recob::Hit>(
+        clusHandle, Event, fPFParticleModuleLabel);
+    // art::FindManyP<recob::Hit> fmhc(clusHandle, Event, fPFParticleModuleLabel);
 
     std::vector<std::vector<art::Ptr<recob::Hit> > > trackHits;
     trackHits.resize(numPlanes);
