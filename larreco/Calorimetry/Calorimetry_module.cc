@@ -394,9 +394,9 @@ void calo::Calorimetry::produce(art::Event& evt)
               geo::Vector_t dirOffsets = {0., 0., 0.};
               if(!fSCEPos&&fSCEDir) { // Get uncorrected points
                 const geo::Vector_t& locCorrection =  sce->GetPosOffsets(loc);
-                loc.SetX(loc.X - locCorrection.X());
-                loc.SetY(loc.Y + locCorrection.Y());
-                loc.SetZ(loc.Z + locCorrection.Z());
+                loc.SetX(loc.X() - locCorrection.X());
+                loc.SetY(loc.Y() + locCorrection.Y());
+                loc.SetZ(loc.Z() + locCorrection.Z());
                 // Get the shift at the uncorrected point
                 locOffsets = sce->GetCalPosOffsets(loc,vhit[ii]->WireID().TPC);
               }
