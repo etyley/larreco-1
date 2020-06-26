@@ -205,11 +205,6 @@ void sce::SCECorrection::produce(art::Event& evt)
   // std::cout<<"Test: Slices: "<<allSlices.size()<<std::endl;
   for (auto const& slice: allSlices) {
 
-    //Cretae a new slice
-    recob::Slice newSlice(*slice);
-    sliceCollection->push_back(newSlice);
-    art::Ptr<recob::Slice> newSlicePtr = slicePtrMaker(sliceCollection->size()-1);
-
     // Get the pfps and hits associated to the slice
     std::vector<art::Ptr<recob::PFParticle> > slicePFPs = fmSlicePFP.at(slice.key());
 
@@ -221,6 +216,11 @@ void sce::SCECorrection::produce(art::Event& evt)
     if (sliceT0CorrectPair.first.isNull() && !fCorrectNoT0Tag) {
       continue;
     }
+
+    //Cretae a new slice
+    recob::Slice newSlice(*slice);
+    sliceCollection->push_back(newSlice);
+    art::Ptr<recob::Slice> newSlicePtr = slicePtrMaker(sliceCollection->size()-1);
 
     art::Ptr<anab::T0> newT0Ptr;
     double t0Offset(0);

@@ -132,9 +132,9 @@ calo::Calorimetry::Calorimetry(fhicl::ParameterSet const& pset)
     fT0ModuleLabel (pset.get< std::string >("T0ModuleLabel") ),
     fUseArea(pset.get< bool >("UseArea") ),
     fSCE(pset.get< bool >("CorrectSCE")), // Only for backwards compatability
-    fSCEPos(pset.get< bool >("CorrectSCEPos",fSCE)),
-    fSCEDir(pset.get< bool >("CorrectSCEDir",fSCE)),
-    fSCEEField(pset.get< bool >("CorrectSCEEField",false)),
+    fSCEPos(pset.get< bool >("CorrectSCEPos",fSCE)), // False if we are using corrected input
+    fSCEDir(pset.get< bool >("CorrectSCEDir",fSCE)), // Do we want to correct pitch dx
+    fSCEEField(pset.get< bool >("CorrectSCEEField",false)), // Do we want to use local E feild recombination in dE
     fFlipTrack_dQdx(pset.get< bool >("FlipTrack_dQdx",true)),
     caloAlg(pset.get< fhicl::ParameterSet >("CaloAlg"))
 {
@@ -236,16 +236,16 @@ void calo::Calorimetry::produce(art::Event& evt)
         if (hits[ipl].size() == 1){
           mf::LogWarning("Calorimetry") << "Only one hit in plane "<<ipl<<" associated with track id "<<trkIter;
         }
-	calorimetrycol->push_back(anab::Calorimetry(util::kBogusD,
-						    vdEdx,
-						    vdQdx,
-						    vresRange,
-						    deadwire,
-						    util::kBogusD,
-						    fpitch,
-						    recob::tracking::convertCollToPoint(vXYZ),
-						    planeID));
-	util::CreateAssn(*this, evt, *calorimetrycol, tracklist[trkIter], *assn);
+  calorimetrycol->push_back(anab::Calorimetry(util::kBogusD,
+                vdEdx,
+                vdQdx,
+                vresRange,
+                deadwire,
+                util::kBogusD,
+                fpitch,
+                recob::tracking::convertCollToPoint(vXYZ),
+                planeID));
+  util::CreateAssn(*this, evt, *calorimetrycol, tracklist[trkIter], *assn);
         continue;
       }
 
@@ -309,51 +309,51 @@ void calo::Calorimetry::produce(art::Event& evt)
       std::vector<double> trkw;
       std::vector<double> trkx0;
       for (size_t i = 0; i<hits[ipl].size(); ++i){
-	//Get space points associated with the hit
-	std::vector< art::Ptr<recob::SpacePoint> > sptv = fmspts.at(hits[ipl][i]);
-	for (size_t j = 0; j < sptv.size(); ++j){
+  //Get space points associated with the hit
+  std::vector< art::Ptr<recob::SpacePoint> > sptv = fmspts.at(hits[ipl][i]);
+  for (size_t j = 0; j < sptv.size(); ++j){
 
-	  double t = allHits[hits[ipl][i]]->PeakTime() - TickT0; // Want T0 here? Otherwise ticks to x is wrong?
-	  double x = detprop->ConvertTicksToX(t, allHits[hits[ipl][i]]->WireID().Plane, allHits[hits[ipl][i]]->WireID().TPC, allHits[hits[ipl][i]]->WireID().Cryostat);
-	  double w = allHits[hits[ipl][i]]->WireID().Wire;
-	  if (TickT0){
-	    trkx.push_back(sptv[j]->XYZ()[0]-detprop->ConvertTicksToX(TickT0, allHits[hits[ipl][i]]->WireID().Plane, allHits[hits[ipl][i]]->WireID().TPC, allHits[hits[ipl][i]]->WireID().Cryostat));
-	  }
-	  else{
-	    trkx.push_back(sptv[j]->XYZ()[0]);
-	  }
-	  trky.push_back(sptv[j]->XYZ()[1]);
-	  trkz.push_back(sptv[j]->XYZ()[2]);
-	  trkw.push_back(w);
-	  trkx0.push_back(x);
-	}
+    double t = allHits[hits[ipl][i]]->PeakTime() - TickT0; // Want T0 here? Otherwise ticks to x is wrong?
+    double x = detprop->ConvertTicksToX(t, allHits[hits[ipl][i]]->WireID().Plane, allHits[hits[ipl][i]]->WireID().TPC, allHits[hits[ipl][i]]->WireID().Cryostat);
+    double w = allHits[hits[ipl][i]]->WireID().Wire;
+    if (TickT0){
+      trkx.push_back(sptv[j]->XYZ()[0]-detprop->ConvertTicksToX(TickT0, allHits[hits[ipl][i]]->WireID().Plane, allHits[hits[ipl][i]]->WireID().TPC, allHits[hits[ipl][i]]->WireID().Cryostat));
+    }
+    else{
+      trkx.push_back(sptv[j]->XYZ()[0]);
+    }
+    trky.push_back(sptv[j]->XYZ()[1]);
+    trkz.push_back(sptv[j]->XYZ()[2]);
+    trkw.push_back(w);
+    trkx0.push_back(x);
+  }
       }
       for (size_t ihit = 0; ihit < hits[ipl].size(); ++ihit){//loop over all hits on each wire plane
 
-	//std::cout<<ihit<<std::endl;
+  //std::cout<<ihit<<std::endl;
 
-	if (!planeID.isValid){
-	  plane = allHits[hits[ipl][ihit]]->WireID().Plane;
-	  tpc   = allHits[hits[ipl][ihit]]->WireID().TPC;
-	  cstat = allHits[hits[ipl][ihit]]->WireID().Cryostat;
-	  planeID.Cryostat = cstat;
-	  planeID.TPC = tpc;
-	  planeID.Plane = plane;
-	  planeID.isValid = true;
-	}
+  if (!planeID.isValid){
+    plane = allHits[hits[ipl][ihit]]->WireID().Plane;
+    tpc   = allHits[hits[ipl][ihit]]->WireID().TPC;
+    cstat = allHits[hits[ipl][ihit]]->WireID().Cryostat;
+    planeID.Cryostat = cstat;
+    planeID.TPC = tpc;
+    planeID.Plane = plane;
+    planeID.isValid = true;
+  }
 
-	wire = allHits[hits[ipl][ihit]]->WireID().Wire;
-	time = allHits[hits[ipl][ihit]]->PeakTime(); // What about here? T0
-	stime = allHits[hits[ipl][ihit]]->PeakTimeMinusRMS();
-	etime = allHits[hits[ipl][ihit]]->PeakTimePlusRMS();
-	const size_t& hitIndex = allHits[hits[ipl][ihit]].key();
+  wire = allHits[hits[ipl][ihit]]->WireID().Wire;
+  time = allHits[hits[ipl][ihit]]->PeakTime(); // What about here? T0
+  stime = allHits[hits[ipl][ihit]]->PeakTimeMinusRMS();
+  etime = allHits[hits[ipl][ihit]]->PeakTimePlusRMS();
+  const size_t& hitIndex = allHits[hits[ipl][ihit]].key();
 
-	double charge = allHits[hits[ipl][ihit]]->PeakAmplitude();
-	if (fUseArea) charge = allHits[hits[ipl][ihit]]->Integral();
-	//get 3d coordinate and track pitch for the current hit
-	//not all hits are associated with space points, the method uses neighboring spacepts to interpolate
-	double xyz3d[3];
-	double pitch;
+  double charge = allHits[hits[ipl][ihit]]->PeakAmplitude();
+  if (fUseArea) charge = allHits[hits[ipl][ihit]]->Integral();
+  //get 3d coordinate and track pitch for the current hit
+  //not all hits are associated with space points, the method uses neighboring spacepts to interpolate
+  double xyz3d[3];
+  double pitch;
         bool fBadhit = false;
         if (fmthm.isValid()){
           auto vhit = fmthm.at(trkIter);
@@ -394,7 +394,7 @@ void calo::Calorimetry::produce(art::Event& evt)
               //Correct pitch for SCE
               geo::Vector_t dirOffsets = {0., 0., 0.};
               if(!fSCEPos&&fSCEDir) {
-                loc += sce->GetPosOffsets(loc); 
+                loc += sce->GetPosOffsets(loc);
                 locOffsets = sce->GetCalPosOffsets(loc,vhit[ii]->WireID().TPC);
               }
               if(sce->EnableCalSpatialSCE()&&fSCEDir) dirOffsets = sce->GetCalPosOffsets(geo::Point_t{loc.X()  + pitch*dir.X(), loc.Y() + pitch*dir.Y(), loc.Z() + pitch*dir.Z()},vhit[ii]->WireID().TPC);
@@ -410,9 +410,9 @@ void calo::Calorimetry::produce(art::Event& evt)
           GetPitch(allHits[hits[ipl][ihit]], trkx, trky, trkz, trkw, trkx0, xyz3d, pitch, TickT0);
 
         if (fBadhit) continue;
-	if (fNotOnTrackZcut && (xyz3d[2] < fNotOnTrackZcut.value())) continue; //hit not on track
-	if (pitch<=0) pitch = fTrkPitch;
-	if (!pitch) continue;
+  if (fNotOnTrackZcut && (xyz3d[2] < fNotOnTrackZcut.value())) continue; //hit not on track
+  if (pitch<=0) pitch = fTrkPitch;
+  if (!pitch) continue;
 
         if(fnsps == 0) {
           xx = xyz3d[0];
@@ -430,44 +430,44 @@ void calo::Calorimetry::produce(art::Event& evt)
           zz = xyz3d[2];
         }
 
-	ChargeBeg.push_back(charge);
-	ChargeEnd.push(charge);
+  ChargeBeg.push_back(charge);
+  ChargeEnd.push(charge);
 
-	double MIPs = charge;
-	double dQdx   = MIPs/pitch;
-	double dEdx   = 0;
-	double EField = detprop->Efield();
-	if (sce->EnableSimEfieldSCE()&&fSCEEField){
-	  // Gets relative E field Distortions
-	  geo::Vector_t EFieldOffsets = sce->GetEfieldOffsets(geo::Point_t{xx, yy, zz});
-	  // Add 1 in X direction as this is the direction of the drift field
-	  EFieldOffsets = EFieldOffsets + geo::Vector_t{1, 0, 0};
-	  // Convert to Absolute E Field from relative
-	  EFieldOffsets = EField * EFieldOffsets;
-	  // We only care about the magnitude for recombination
-	  EField = EFieldOffsets.r();
-	}
-	if (fUseArea) dEdx = caloAlg.dEdx_AREA(allHits[hits[ipl][ihit]], pitch, T0, EField);
-	else dEdx = caloAlg.dEdx_AMP(allHits[hits[ipl][ihit]], pitch, T0, EField);
+  double MIPs = charge;
+  double dQdx   = MIPs/pitch;
+  double dEdx   = 0;
+  double EField = detprop->Efield();
+  if (sce->EnableSimEfieldSCE()&&fSCEEField){
+    // Gets relative E field Distortions
+    geo::Vector_t EFieldOffsets = sce->GetEfieldOffsets(geo::Point_t{xx, yy, zz});
+    // Add 1 in X direction as this is the direction of the drift field
+    EFieldOffsets = EFieldOffsets + geo::Vector_t{1, 0, 0};
+    // Convert to Absolute E Field from relative
+    EFieldOffsets = EField * EFieldOffsets;
+    // We only care about the magnitude for recombination
+    EField = EFieldOffsets.r();
+  }
+  if (fUseArea) dEdx = caloAlg.dEdx_AREA(allHits[hits[ipl][ihit]], pitch, T0, EField);
+  else dEdx = caloAlg.dEdx_AMP(allHits[hits[ipl][ihit]], pitch, T0, EField);
 
-	Kin_En = Kin_En + dEdx * pitch;
+  Kin_En = Kin_En + dEdx * pitch;
 
-	if (allHits[hits[ipl][ihit]]->WireID().Wire < wire0) wire0 = allHits[hits[ipl][ihit]]->WireID().Wire;
-	if (allHits[hits[ipl][ihit]]->WireID().Wire > wire1) wire1 = allHits[hits[ipl][ihit]]->WireID().Wire;
+  if (allHits[hits[ipl][ihit]]->WireID().Wire < wire0) wire0 = allHits[hits[ipl][ihit]]->WireID().Wire;
+  if (allHits[hits[ipl][ihit]]->WireID().Wire > wire1) wire1 = allHits[hits[ipl][ihit]]->WireID().Wire;
 
-	fMIPs.push_back(MIPs);
-	fdEdx.push_back(dEdx);
-	fdQdx.push_back(dQdx);
-	fwire.push_back(wire);
-	ftime.push_back(time);
-	fstime.push_back(stime);
-	fetime.push_back(etime);
-	fpitch.push_back(pitch);
-	TVector3 v(xyz3d[0],xyz3d[1],xyz3d[2]);
-	//std::cout << "Adding these positions to v and then fXYZ " << xyz3d[0] << " " << xyz3d[1] << " " << xyz3d[2] << "\n" <<std::endl;
-	fXYZ.push_back(v);
-	fHitIndex.push_back(hitIndex);
-	++fnsps;
+  fMIPs.push_back(MIPs);
+  fdEdx.push_back(dEdx);
+  fdQdx.push_back(dQdx);
+  fwire.push_back(wire);
+  ftime.push_back(time);
+  fstime.push_back(stime);
+  fetime.push_back(etime);
+  fpitch.push_back(pitch);
+  TVector3 v(xyz3d[0],xyz3d[1],xyz3d[2]);
+  //std::cout << "Adding these positions to v and then fXYZ " << xyz3d[0] << " " << xyz3d[1] << " " << xyz3d[2] << "\n" <<std::endl;
+  fXYZ.push_back(v);
+  fHitIndex.push_back(hitIndex);
+  ++fnsps;
       }
       if (fnsps<2){
         vdEdx.clear();
@@ -475,29 +475,29 @@ void calo::Calorimetry::produce(art::Event& evt)
         vresRange.clear();
         deadwire.clear();
         fpitch.clear();
-	//std::cout << "Adding the aforementioned positions..." << std::endl;
-	calorimetrycol->push_back(anab::Calorimetry(util::kBogusD,
-						    vdEdx,
-						    vdQdx,
-						    vresRange,
-						    deadwire,
-						    util::kBogusD,
-						    fpitch,
-						    recob::tracking::convertCollToPoint(vXYZ),
-						    planeID));
-	util::CreateAssn(*this, evt, *calorimetrycol, tracklist[trkIter], *assn);
-	continue;
+  //std::cout << "Adding the aforementioned positions..." << std::endl;
+  calorimetrycol->push_back(anab::Calorimetry(util::kBogusD,
+                vdEdx,
+                vdQdx,
+                vresRange,
+                deadwire,
+                util::kBogusD,
+                fpitch,
+                recob::tracking::convertCollToPoint(vXYZ),
+                planeID));
+  util::CreateAssn(*this, evt, *calorimetrycol, tracklist[trkIter], *assn);
+  continue;
       }
       for (int isp = 0; isp<fnsps; ++isp){
-	if (isp>3) break;
-	USChg += ChargeBeg[isp];
+  if (isp>3) break;
+  USChg += ChargeBeg[isp];
       }
       int countsp = 0;
       while (!ChargeEnd.empty()){
-	if (countsp>3) break;
-	DSChg += ChargeEnd.top();
-	ChargeEnd.pop();
-	++countsp;
+  if (countsp>3) break;
+  DSChg += ChargeEnd.top();
+  ChargeEnd.pop();
+  ++countsp;
       }
       if (fFlipTrack_dQdx){
         // Going DS if charge is higher at the end
@@ -548,114 +548,114 @@ void calo::Calorimetry::produce(art::Event& evt)
         vdEdx.push_back(fdEdx[i]);
         vdQdx.push_back(fdQdx[i]);
         vXYZ.push_back(fXYZ[i]);
-	if (i!=0 && i!= fnsps-1){//ignore the first and last point
-	  // Calculate PIDA
+  if (i!=0 && i!= fnsps-1){//ignore the first and last point
+    // Calculate PIDA
           Ai = fdEdx[i] * pow(fResRng[i],0.42);
           nPIDA++;
           PIDA += Ai;
-	}
+  }
 
-	MF_LOG_DEBUG("CaloPrtHit") <<std::setw(4)<< trkIter
+  MF_LOG_DEBUG("CaloPrtHit") <<std::setw(4)<< trkIter
           //std::cout<<std::setw(4)<< trkIter
                    <<std::setw(4)<< ipl
                    <<std::setw(4) << i
-		   <<std::setw(4)  << fwire[i]
-		   << std::setw(6) << (int)ftime[i]
-		   << std::setiosflags(std::ios::fixed | std::ios::showpoint)
-		   << std::setprecision(2)
-		   << std::setw(8) << fResRng[i]
-		   << std::setprecision(1)
-		   << std::setw(8) << fMIPs[i]
-		   << std::setprecision(2)
-		   << std::setw(8) << fpitch[i]
-		   << std::setw(8) << fdEdx[i]
-		   << std::setw(8) << Ai
-		  << std::setw(8) << fXYZ[i].x()
-		  << std::setw(8) << fXYZ[i].y()
-		  << std::setw(8) << fXYZ[i].z()
-		   << "\n";
+       <<std::setw(4)  << fwire[i]
+       << std::setw(6) << (int)ftime[i]
+       << std::setiosflags(std::ios::fixed | std::ios::showpoint)
+       << std::setprecision(2)
+       << std::setw(8) << fResRng[i]
+       << std::setprecision(1)
+       << std::setw(8) << fMIPs[i]
+       << std::setprecision(2)
+       << std::setw(8) << fpitch[i]
+       << std::setw(8) << fdEdx[i]
+       << std::setw(8) << Ai
+      << std::setw(8) << fXYZ[i].x()
+      << std::setw(8) << fXYZ[i].y()
+      << std::setw(8) << fXYZ[i].z()
+       << "\n";
       }//end looping over 3D points
       if(nPIDA > 0) {
-	PIDA = PIDA / (double)nPIDA;
+  PIDA = PIDA / (double)nPIDA;
       }
       else {
-	PIDA = -1;
+  PIDA = -1;
       }
       MF_LOG_DEBUG("CaloPrtTrk") << "Plane # "<< ipl
-		 << "TrkPitch= "
-		 << std::setprecision(2) << fTrkPitch
-		 << " nhits= "        << fnsps
-		 << "\n"
-		 << std::setiosflags(std::ios::fixed | std::ios::showpoint)
-		 << "Trk Length= "       << std::setprecision(1)
-		 << Trk_Length           << " cm,"
-		 << " KE calo= "         << std::setprecision(1)
-		 << Kin_En               << " MeV,"
-		 << " PIDA= "            << PIDA
-		 << "\n";
+     << "TrkPitch= "
+     << std::setprecision(2) << fTrkPitch
+     << " nhits= "        << fnsps
+     << "\n"
+     << std::setiosflags(std::ios::fixed | std::ios::showpoint)
+     << "Trk Length= "       << std::setprecision(1)
+     << Trk_Length           << " cm,"
+     << " KE calo= "         << std::setprecision(1)
+     << Kin_En               << " MeV,"
+     << " PIDA= "            << PIDA
+     << "\n";
 
       // look for dead wires
       for (unsigned int iw = wire0; iw<wire1+1; ++iw){
-	plane = allHits[hits[ipl][0]]->WireID().Plane;
-	tpc   = allHits[hits[ipl][0]]->WireID().TPC;
-	cstat = allHits[hits[ipl][0]]->WireID().Cryostat;
-	channel = geom->PlaneWireToChannel(plane,iw,tpc,cstat);
-	if (channelStatus.IsBad(channel)){
-	  MF_LOG_DEBUG("Calorimetry") << "Found dead wire at Plane = " << plane
-					 << " Wire =" << iw;
-	  unsigned int closestwire = 0;
-	  unsigned int endwire = 0;
-	  unsigned int dwire = 100000;
-	  double mindis = 100000;
-	  double goodresrange = 0;
-	  //hitCtr = 0;
-	  for (size_t ihit = 0; ihit <hits[ipl].size(); ++ihit){
-	    //	for(art::PtrVector<recob::Hit>::const_iterator hitIter = hitsV.begin();
-	    //	    hitIter != hitsV.end();
-	    //	    ++hitCtr, hitIter++){
-	    channel = allHits[hits[ipl][ihit]]->Channel();
-	    if (channelStatus.IsBad(channel)) continue;
-	    // grab the space points associated with this hit
-	    std::vector< art::Ptr<recob::SpacePoint> > sppv = fmspts.at(hits[ipl][ihit]);
-	    if(sppv.size() < 1) continue;
-	    // only use the first space point in the collection, really each hit should
-	    // only map to 1 space point
-	    const recob::Track::Point_t xyz{sppv[0]->XYZ()[0],
-				   sppv[0]->XYZ()[1],
-				   sppv[0]->XYZ()[2]};
-	    double dis1 = (larEnd - xyz).Mag2();
-	    if (dis1) dis1 = std::sqrt(dis1);
-	    if (dis1 < mindis){
-	      endwire = allHits[hits[ipl][ihit]]->WireID().Wire;
-	      mindis = dis1;
-	    }
-	    if (util::absDiff(wire, iw) < dwire){
-	      closestwire = allHits[hits[ipl][ihit]]->WireID().Wire;
-	      dwire = util::absDiff(allHits[hits[ipl][ihit]]->WireID().Wire, iw);
-	      goodresrange = dis1;
-	    }
-	  }
-	  if (closestwire){
-	    if (iw < endwire){
-	      deadwire.push_back(goodresrange+(int(closestwire)-int(iw))*fTrkPitch);
-	    }
-	    else{
-	      deadwire.push_back(goodresrange+(int(iw)-int(closestwire))*fTrkPitch);
-	    }
-	  }
-	}
+  plane = allHits[hits[ipl][0]]->WireID().Plane;
+  tpc   = allHits[hits[ipl][0]]->WireID().TPC;
+  cstat = allHits[hits[ipl][0]]->WireID().Cryostat;
+  channel = geom->PlaneWireToChannel(plane,iw,tpc,cstat);
+  if (channelStatus.IsBad(channel)){
+    MF_LOG_DEBUG("Calorimetry") << "Found dead wire at Plane = " << plane
+           << " Wire =" << iw;
+    unsigned int closestwire = 0;
+    unsigned int endwire = 0;
+    unsigned int dwire = 100000;
+    double mindis = 100000;
+    double goodresrange = 0;
+    //hitCtr = 0;
+    for (size_t ihit = 0; ihit <hits[ipl].size(); ++ihit){
+      //  for(art::PtrVector<recob::Hit>::const_iterator hitIter = hitsV.begin();
+      //      hitIter != hitsV.end();
+      //      ++hitCtr, hitIter++){
+      channel = allHits[hits[ipl][ihit]]->Channel();
+      if (channelStatus.IsBad(channel)) continue;
+      // grab the space points associated with this hit
+      std::vector< art::Ptr<recob::SpacePoint> > sppv = fmspts.at(hits[ipl][ihit]);
+      if(sppv.size() < 1) continue;
+      // only use the first space point in the collection, really each hit should
+      // only map to 1 space point
+      const recob::Track::Point_t xyz{sppv[0]->XYZ()[0],
+           sppv[0]->XYZ()[1],
+           sppv[0]->XYZ()[2]};
+      double dis1 = (larEnd - xyz).Mag2();
+      if (dis1) dis1 = std::sqrt(dis1);
+      if (dis1 < mindis){
+        endwire = allHits[hits[ipl][ihit]]->WireID().Wire;
+        mindis = dis1;
+      }
+      if (util::absDiff(wire, iw) < dwire){
+        closestwire = allHits[hits[ipl][ihit]]->WireID().Wire;
+        dwire = util::absDiff(allHits[hits[ipl][ihit]]->WireID().Wire, iw);
+        goodresrange = dis1;
+      }
+    }
+    if (closestwire){
+      if (iw < endwire){
+        deadwire.push_back(goodresrange+(int(closestwire)-int(iw))*fTrkPitch);
+      }
+      else{
+        deadwire.push_back(goodresrange+(int(iw)-int(closestwire))*fTrkPitch);
+      }
+    }
+  }
       }
       //std::cout << "Adding at the end but still same fXYZ" << std::endl;
       calorimetrycol->push_back(anab::Calorimetry(Kin_En,
-						  vdEdx,
-						  vdQdx,
-						  vresRange,
-						  deadwire,
-						  Trk_Length,
-						  fpitch,
-						  recob::tracking::convertCollToPoint(vXYZ),
-						  fHitIndex,
-						  planeID));
+              vdEdx,
+              vdQdx,
+              vresRange,
+              deadwire,
+              Trk_Length,
+              fpitch,
+              recob::tracking::convertCollToPoint(vXYZ),
+              fHitIndex,
+              planeID));
       util::CreateAssn(*this, evt, *calorimetrycol, tracklist[trkIter], *assn);
 
     }//end looping over planes
@@ -744,10 +744,10 @@ void calo::Calorimetry::GetPitch(art::Ptr<recob::Hit> hit, std::vector<double> t
     //for (int i = 0; i<np; i++) std::cout<<i<<" "<<vs[i]<<" "<<vx[i]<<" "<<vy[i]<<" "<<vz[i]<<std::endl;
     try{
       if (np>2){
-	xs->Fit("pol2","Q");
+  xs->Fit("pol2","Q");
       }
       else{
-	xs->Fit("pol1","Q");
+  xs->Fit("pol1","Q");
       }
       TF1 *pol = 0;
       if (np>2) pol = (TF1*) xs->GetFunction("pol2");
@@ -764,10 +764,10 @@ void calo::Calorimetry::GetPitch(art::Ptr<recob::Hit> hit, std::vector<double> t
     TGraph *ys = new TGraph(np,&vs[0],&vy[0]);
     try{
       if (np>2){
-	ys->Fit("pol2","Q");
+  ys->Fit("pol2","Q");
       }
       else{
-	ys->Fit("pol1","Q");
+  ys->Fit("pol1","Q");
       }
       TF1 *pol = 0;
       if (np>2) pol = (TF1*) ys->GetFunction("pol2");
@@ -784,10 +784,10 @@ void calo::Calorimetry::GetPitch(art::Ptr<recob::Hit> hit, std::vector<double> t
     TGraph *zs = new TGraph(np,&vs[0],&vz[0]);
     try{
       if (np>2){
-	zs->Fit("pol2","Q");
+  zs->Fit("pol2","Q");
       }
       else{
-	zs->Fit("pol1","Q");
+  zs->Fit("pol1","Q");
       }
       TF1 *pol = 0;
       if (np>2) pol = (TF1*) zs->GetFunction("pol2");
