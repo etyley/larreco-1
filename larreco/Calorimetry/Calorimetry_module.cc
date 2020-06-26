@@ -385,7 +385,6 @@ void calo::Calorimetry::produce(art::Event& evt)
               double cosgamma = std::abs(std::sin(angleToVert)*dir.Y() + std::cos(angleToVert)*dir.Z());
               if (cosgamma){
                 pitch = geom->WirePitch(vhit[ii]->View())/cosgamma;
-
               }
               else{
                 pitch = 0;
@@ -393,10 +392,15 @@ void calo::Calorimetry::produce(art::Event& evt)
 
               //Correct pitch for SCE
               geo::Vector_t dirOffsets = {0., 0., 0.};
-              if(!fSCEPos&&fSCEDir) {
-                loc += sce->GetPosOffsets(loc);
+              if(!fSCEPos&&fSCEDir) { // Get uncorrected points
+                const geo::Vector_t& locCorrection =  sce->GetPosOffsets(loc);
+                loc.SetX(loc.X - locCorrection.X());
+                loc.SetY(loc.Y + locCorrection.Y());
+                loc.SetZ(loc.Z + locCorrection.Z());
+                // Get the shift at the uncorrected point
                 locOffsets = sce->GetCalPosOffsets(loc,vhit[ii]->WireID().TPC);
               }
+              // Get SCE shift at next sp
               if(sce->EnableCalSpatialSCE()&&fSCEDir) dirOffsets = sce->GetCalPosOffsets(geo::Point_t{loc.X()  + pitch*dir.X(), loc.Y() + pitch*dir.Y(), loc.Z() + pitch*dir.Z()},vhit[ii]->WireID().TPC);
 
               const TVector3& dir_corr = {pitch*dir.X() - dirOffsets.X() + locOffsets.X(), pitch*dir.Y() + dirOffsets.Y() - locOffsets.Y(), pitch*dir.Z() + dirOffsets.Z() - locOffsets.Z()};
